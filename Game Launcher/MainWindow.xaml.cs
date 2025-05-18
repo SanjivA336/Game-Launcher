@@ -24,7 +24,6 @@ namespace Game_Launcher {
 
         public MainWindow() {
             InitializeComponent();
-            this.SizeChanged += MainWindow_SizeChanged;
 
             // Root paths to search for executables
             var rootPaths = new List<DirectoryInfo> {
@@ -70,54 +69,35 @@ namespace Game_Launcher {
 
             mappings.Sort((a, b) => a.Name.CompareTo(b.Name));
 
-            // Display mappings in UI
-            GameTileGrid.Children.Clear();
 
-            foreach (var mapping in mappings) {
-                var tile = new GameTile();
-                tile.DataContext = mapping;
-                GameTileGrid.Children.Add(tile);
+            // Show the library page
+            PageHost.Navigate(new Views.Pages.Library(mappings));
+        }
+
+        #region Title Bar
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e) {
+            if (e.ChangedButton == MouseButton.Left)
+                this.DragMove();
+        }
+
+        private void Minimize_Click(object sender, RoutedEventArgs e) {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void Maximize_Click(object sender, RoutedEventArgs e) {
+            if (WindowState == WindowState.Maximized) {
+                WindowState = WindowState.Normal;
+                Maximize.Content = "❐";  // Maximize icon
             }
-
-            UpdateTileGridLayout();
-        }
-
-        #region UI Layout
-        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e) {
-            UpdateTileGridLayout();
-        }
-
-        private void UpdateTileGridLayout() {
-            double gridWidth = GameTileGrid.ActualWidth;
-            const double tileRatio = 1.25; // Height / Width
-            const double maxTileWidth = 240;
-            const double minTileWidth = 200;
-            const double tileMargin = 20;
-
-            if (gridWidth == 0)
-                return;
-
-            int columns = Math.Max(1, (int)(gridWidth / minTileWidth));
-            int rows = Math.Max(1, (int)Math.Ceiling((double)GameTileGrid.Children.Count / columns));
-
-            GameTileGrid.Columns = columns;
-            GameTileGrid.Rows = rows;
-
-            double totalMarginSpace = (columns + 1) * tileMargin;
-            double availableWidth = gridWidth - totalMarginSpace;
-            double tileWidth = availableWidth / columns;
-            tileWidth = Math.Max(minTileWidth, Math.Min(tileWidth, maxTileWidth));
-            double tileHeight = tileWidth * tileRatio;
-
-            foreach (UIElement child in GameTileGrid.Children) {
-                if (child is FrameworkElement fe) {
-                    fe.Width = tileWidth;
-                    fe.Height = tileHeight;
-                    fe.Margin = new Thickness(tileMargin / 2);
-                }
+            else {
+                WindowState = WindowState.Maximized;
+                Maximize.Content = "❑";  // Restore icon
             }
         }
 
+        private void Close_Click(object sender, RoutedEventArgs e) {
+            Close();
+        }
         #endregion
 
         #region Game Scanning and Loading

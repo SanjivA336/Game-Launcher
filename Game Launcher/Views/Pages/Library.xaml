@@ -4,10 +4,58 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:Game_Launcher.Views.Pages"
+      xmlns:userControls="clr-namespace:Game_Launcher.Views"
       mc:Ignorable="d" 
-      d:DesignHeight="450" d:DesignWidth="800"
+      d:DesignHeight="700" d:DesignWidth="960"
       Title="Library">
-    <Grid>
-        
-    </Grid>
+    <Border Grid.Column="0" BorderBrush="#1f1f1f" BorderThickness="0, 0, 1, 0" Padding="10" Background="#0b0b0b" >
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="70"/>
+                <RowDefinition Height="60"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Label: Library -->
+            <TextBlock Grid.Row="0" Text="Library" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
+
+            <!-- Search Bar -->
+            <userControls:TextEntry Grid.Row="1" Margin="10" Placeholder="Search Library..."/>
+
+            <!-- Library Content -->
+            <Border Grid.Row="2" BorderBrush="#1f1f1f" BorderThickness="0, 1, 0, 0" Background="#0c0c0c" Padding="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="8*"/>
+                        <ColumnDefinition Width="2*" MaxWidth="300"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Game Tiles -->
+                    <ScrollViewer Grid.Column="0" Grid.Row="2" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <UniformGrid Name="GameTileGrid" HorizontalAlignment="Stretch" />
+                    </ScrollViewer>
+
+                    <!-- Filters -->
+                    <Grid Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="50"/>
+                            <RowDefinition Height="6*"/>
+                            <RowDefinition Height="4*"/>
+
+                        </Grid.RowDefinitions>
+
+                        <!-- Label: Filters -->
+                        <Border Grid.Row="0" BorderBrush="#1f1f1f" BorderThickness="0, 0, 0, 1">
+                            <TextBlock Text="Filters" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="20" FontFamily="Segoe UI Black"/>
+                        </Border>
+
+                        <!-- Label: Quick Actions -->
+                        <Border Grid.Row="1" BorderBrush="#1f1f1f" BorderThickness="0, 0, 0, 1">
+                            <TextBlock Text="Quick Actions" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="20" FontFamily="Segoe UI Black"/>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
 </Page>

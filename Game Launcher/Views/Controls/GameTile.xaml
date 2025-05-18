@@ -17,11 +17,11 @@
 
                 <!-- Splash Image + Launch Button -->
                 <Button Name="Launch" Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0" Click="Launch_Click">
-                    <!-- <Image Source="{Binding CoverImage}" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/> -->
+                    <Image Source="{Binding CoverImagePath, FallbackValue='Assets/placeholder.png'}" Stretch="UniformToFill"/>
                 </Button>
                 
-                <!-- Game Label -->
-                <Button Name="Options" Grid.Row="1" Padding="5" Background="#333333" BorderThickness="0">
+                <!-- Game Label + Options Button-->
+                <Button Name="Options" Grid.Row="1" Padding="5" Background="#333333" BorderThickness="0" Click="Options_Click">
                     <Grid Margin="10">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="8*" />

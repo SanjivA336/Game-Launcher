@@ -20,6 +20,8 @@ using System.IO;
 namespace Game_Launcher.Views {
     public partial class GameTile : UserControl {
 
+        public event EventHandler OptionsRequested;
+
         public GameTile() {
             InitializeComponent();
         }
@@ -37,6 +39,10 @@ namespace Game_Launcher.Views {
             }
 
             Keyboard.ClearFocus();
+        }
+
+        private void Options_Click(object sender, RoutedEventArgs e) {
+            OptionsRequested?.Invoke(this, EventArgs.Empty);
         }
     }
 }

@@ -7,8 +7,8 @@
              mc:Ignorable="d" 
              d:DesignHeight="40" d:DesignWidth="800">
     <Grid>
-        <TextBlock Name="Placeholder" Text="Search Library..." Foreground="#555555" VerticalAlignment="Center" Margin="10"/>
-        <TextBox Name="Input" VerticalContentAlignment="Center" Foreground="White" Padding="10" Background="Transparent" BorderBrush="#222222" />
-        <Button Name="Clear" Content="✖" Width="40" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Foreground="White"/>
+        <TextBlock Name="PlaceholderText" Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}" VerticalAlignment="Center" Padding="10" Foreground="#555555" />
+        <TextBox Name="InputBox" VerticalAlignment="Center" Padding="10" Foreground="White" Background="Transparent" BorderBrush="#1f1f1f" />
+        <Button Name="Clear" Content="✖" Width="40" HorizontalAlignment="Right" Foreground="White" Background="Transparent" Click="Clear_Click" />
     </Grid>
 </UserControl>

@@ -1,59 +1,72 @@
 ﻿<Window x:Class="Game_Launcher.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:Game_Launcher"
-        xmlns:userControls="clr-namespace:Game_Launcher.Views"
-        mc:Ignorable="d"
-        Title="MainWindow" Height="700" Width="1200"
-        MinHeight="700" MinWidth="1200">
-    <Grid Background="#0f0f0f">
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" MaxWidth="300"/>
-                <ColumnDefinition Width="8*"/>
-            </Grid.ColumnDefinitions>
+       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+       xmlns:local="clr-namespace:Game_Launcher"
+       xmlns:userControls="clr-namespace:Game_Launcher.Views"
+       mc:Ignorable="d"
+       Title="Nexus"
+       WindowStyle="None"
+       ResizeMode="CanResize"
+       AllowsTransparency="False"
+       Background="#0b0b0b"
+       MinHeight="700" MinWidth="1200">
 
-            <!-- Sidebar -->
-            <Grid Grid.Column="0" Background="#0b0b0b">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="70"/>
-                    <RowDefinition Height="10*"/>
-                </Grid.RowDefinitions>
+   <!-- WindowChrome -->
+   <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
 
-                <!-- Label: Sections -->
-                <TextBlock Grid.Row="0" Text="Sections" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
+    <Border BorderBrush="#1f1f1f" BorderThickness="1" SnapsToDevicePixels="True">
+       <Grid>
+           <Grid.RowDefinitions>
+               <RowDefinition Height="40"/>
+               <RowDefinition Height="10*"/>
+           </Grid.RowDefinitions>
 
-            </Grid>
+           <!-- Title Bar -->
+           <Border BorderBrush="#1f1f1f" BorderThickness="0, 0, 0, 1">
+                <Grid Grid.Row="0" MouseDown="TitleBar_MouseDown" Background="#0b0b0b">
+                   <Grid.ColumnDefinitions>
+                       <ColumnDefinition Width="10*"/>
+                       <ColumnDefinition Width="40"/>
+                       <ColumnDefinition Width="40"/>
+                       <ColumnDefinition Width="40"/>
+                   </Grid.ColumnDefinitions>
 
-            <!-- Library -->
-            <Grid Grid.Column="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="70"/>
-                    <RowDefinition Height="60"/>
-                    <RowDefinition Height="10*"/>
-                </Grid.RowDefinitions>
+                   <!-- Title -->
+                   <TextBlock Grid.Column="0" Text="Nexus Launcher" FontSize="15" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="White" FontFamily="Segoe UI Black"/>
 
-                <!-- Label: Library -->
-                <TextBlock Grid.Row="0" Text="Library" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
+                    <Button Grid.Column="1" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Minimize_Click"/>
+                    <Button Grid.Column="2" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Maximize_Click" Name="Maximize" />
+                   <Button Grid.Column="3" Content="✖" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" Click="Close_Click"/>
+               </Grid>
+           </Border>
 
-                <!-- Search Bar -->
-                <userControls:TextEntry Grid.Row="1" Margin="10"/>
+           <!-- Main content -->
+           <Grid Grid.Row="1" Background="#0f0f0f">
+               <Grid.ColumnDefinitions>
+                   <ColumnDefinition Width="2*" MaxWidth="300"/>
+                   <ColumnDefinition Width="8*"/>
+               </Grid.ColumnDefinitions>
 
-                <!-- Game Tiles -->
-                <Grid Grid.Row="2">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="8*"/>
-                        <ColumnDefinition Width="2*" MaxWidth="300"/>
-                    </Grid.ColumnDefinitions>
+               <!-- Sidebar -->
+               <Border Grid.Column="0" BorderBrush="#1f1f1f" BorderThickness="0, 0, 1, 0" Padding="10" Background="#0b0b0b" >
+                   <Grid >
+                       <Grid.RowDefinitions>
+                           <RowDefinition Height="70"/>
+                           <RowDefinition Height="10*"/>
+                       </Grid.RowDefinitions>
 
-                    <ScrollViewer Grid.Column="0" Grid.Row="2" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-                        <UniformGrid Name="GameTileGrid" HorizontalAlignment="Stretch" />
-                    </ScrollViewer>
+                       <!-- Label: Sections -->
+                       <TextBlock Grid.Row="0" Text="Sections" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
+                   </Grid>
+               </Border>
 
-                </Grid>
-            </Grid>
-        </Grid>
-    </Grid>
+               <!-- Swappable Content Area -->
+               <Frame Name="PageHost" Grid.Column="1" NavigationUIVisibility="Hidden"/>
+           </Grid>
+       </Grid>
+   </Border>
 </Window>

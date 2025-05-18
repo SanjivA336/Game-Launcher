@@ -24,6 +24,8 @@ namespace Game_Launcher.Models {
         [JsonIgnore]
         public bool IsInstalled { get; set; }
 
+        public string? CoverImagePath = null;
+
         public GameMapping() {
 
         }
@@ -44,7 +46,6 @@ namespace Game_Launcher.Models {
         public string GetExecutablePath() {
             return Path.Combine(DirPath.FullName, Executables[PrimaryExecutable].Name);
         }
-
 
         public bool LaunchExecutable(out string? error) {
             error = null;
