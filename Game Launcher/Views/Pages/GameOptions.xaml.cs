@@ -45,5 +45,17 @@ namespace Game_Launcher.Views.Pages
                 }
             }
         }
+
+        private void Confirm_Click(object sender, RoutedEventArgs e) {
+            
+        }
+
+        private void Cancel_Click(object sender, RoutedEventArgs e) {
+
+        }
+
+        private void Reset_Click(object sender, RoutedEventArgs e) {
+
+        }
     }
 }

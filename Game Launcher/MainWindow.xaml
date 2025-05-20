@@ -38,8 +38,8 @@
                    <!-- Title -->
                    <TextBlock Grid.Column="0" Text="Nexus Launcher" FontSize="15" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="White" FontFamily="Segoe UI Black"/>
 
-                    <Button Grid.Column="1" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Minimize_Click"/>
-                    <Button Grid.Column="2" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Maximize_Click" Name="Maximize" />
+                   <Button Grid.Column="1" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Minimize_Click"/>
+                   <Button Grid.Column="2" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Maximize_Click" Name="Maximize" />
                    <Button Grid.Column="3" Content="✖" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" Click="Close_Click"/>
                </Grid>
            </Border>

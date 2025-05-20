@@ -24,7 +24,7 @@ namespace Game_Launcher.Models {
         [JsonIgnore]
         public bool IsInstalled { get; set; }
 
-        public string? CoverImagePath = null;
+        public string? CoverImagePath { get; set; } = null;
 
         public GameMapping() {
 

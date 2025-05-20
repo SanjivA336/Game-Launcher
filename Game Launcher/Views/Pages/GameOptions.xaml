@@ -22,15 +22,27 @@
             <Border Grid.Row="1" BorderBrush="#1f1f1f" BorderThickness="0, 1, 0, 0" Background="#0c0c0c" Padding="10">
                 <Grid>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="6*"/>
+                        <RowDefinition Height="5*"/>
                         <RowDefinition Height="2*"/>
                         <RowDefinition Height="2*"/>
+                        <RowDefinition Height="1*"/>
                     </Grid.RowDefinitions>
-                    <Button Name="ChangeImage" Click="ChangeImage_Click" BorderThickness="0" Background="Transparent">
-                        <Image Source="{Binding CoverImagePath, TargetNullValue='Assets/placeholder.png'}" Width="150" Height="200"/>
+                    <Button Grid.Row="0" Margin="10" Click="ChangeImage_Click" BorderThickness="0" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                        <Image Source="{Binding CoverImagePath, TargetNullValue='Assets/placeholder.png'}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
+                    
+                    <!-- Confirm/Cancel Changes-->
+                    <Grid Grid.Row="3" MaxWidth="700">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-
+                        <Button Grid.Column="0" Content="Confirm" Margin="5" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Click="Confirm_Click"/>
+                        <Button Grid.Column="1" Content="Cancel" Margin="5" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Click="Cancel_Click"/>
+                        <Button Grid.Column="2" Content="Reset" Margin="5" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Click="Reset_Click"/>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>
