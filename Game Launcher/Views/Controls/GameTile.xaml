@@ -17,7 +17,7 @@
 
                 <!-- Splash Image + Launch Button -->
                 <Button Name="Launch" Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0" Click="Launch_Click">
-                    <Image Source="{Binding CoverImagePath, FallbackValue='Assets/placeholder.png'}" Stretch="UniformToFill"/>
+                    <Image Source="../../Assets/placeholder.png" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
                 
                 <!-- Game Label + Options Button-->

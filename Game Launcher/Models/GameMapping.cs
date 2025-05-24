@@ -1,57 +1,53 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Text.Json.Serialization;
-using System.Diagnostics;
 
 namespace Game_Launcher.Models {
-
     public class GameMapping {
-        public string DirPathString { get; set; } = string.Empty;
+
+        public string _dirPath { get; set; } = string.Empty;
         [JsonIgnore]
-        public DirectoryInfo DirPath => new DirectoryInfo(DirPathString);
+        public DirectoryInfo DirPath => new DirectoryInfo(_dirPath);
 
-        public List<string> ExecutablesString { get; set; } = new List<string> { };
+        public List<string> _executables { get; set; } = new List<string> { };
         [JsonIgnore]
-        public List<FileInfo> Executables => ExecutablesString.Select(path => new FileInfo(path)).ToList();
+        public List<FileInfo> Executables => _executables.Select(path => new FileInfo(path)).ToList();
 
-        public int PrimaryExecutable { get; set; }
-        public string Name { get; set; } = "Unkown";
-        public bool IsVisible { get; set; }
-        [JsonIgnore]
-        public bool IsInstalled { get; set; }
+        public int PrimaryExecutable { get; set; } = 0;
+        public string Name { get; set; } = "Unknown";
+        public HashSet<string> Tags { get; set; } = [];
 
-        public string? CoverImagePath { get; set; } = null;
+        public GameMapping() { }
 
-        public GameMapping() {
-
-        }
-
-        public GameMapping(string rawPath, List<FileInfo> executables) {
-            DirPathString = rawPath;
-            ExecutablesString = executables.Select(f => f.Name).ToList(); ;
-            PrimaryExecutable = 0;
+        /// <summary> Constructor for GameMapping. </summary>
+        /// <param name="path"> The raw path to the game directory.</param>
+        /// <param name="executables"> The list of executable files for the game.</param>
+        public GameMapping(string path, List<FileInfo> executables) {
+            _dirPath = path;
+            _executables = executables.Select(f => f.Name).ToList();
             Name = DirPath.Name;
-            IsVisible = true;
-            IsInstalled = DirPath.Exists;
         }
 
+        /// <summary> Returns a string representation of the GameMapping object. </summary>
+        /// <returns> A string that represents the GameMapping object. </returns>
         public override string ToString() {
-            return $@"{Name} {(IsInstalled ? "(✓)" : "(x)")} {(IsVisible ? "(◉)" : "(○)")}: {DirPath.FullName}\{Executables[PrimaryExecutable].Name}";
+            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath.FullName}\{Executables[PrimaryExecutable].Name}";
         }
 
+        /// <summary> Gets the path to the primary executable file.</summary>
+        /// <returns> The full path to the primary executable file.</returns>
         public string GetExecutablePath() {
             return Path.Combine(DirPath.FullName, Executables[PrimaryExecutable].Name);
         }
 
+        /// <summary> Launches the primary executable file for the game. </summary>
+        /// <param name="error"> The error message if the launch fails.</param>
+        /// <returns> True if the launch was successful, false otherwise.</returns>
         public bool LaunchExecutable(out string? error) {
             error = null;
 
             // Check if the game is installed
-            if (!IsInstalled) {
+            if (!Tags.Contains("Installed")) {
                 error = $"{Name} is not curretnly installed. If this is an error, try refreshing your library.";
                 return false;
             }
@@ -73,5 +69,53 @@ namespace Game_Launcher.Models {
                 return false;
             }
         }
+
+        #region Tag Management
+        /// <summary> Adds a tag to the game mapping. </summary>
+        /// <param name="tag"> The tag to add.</param>
+        /// <returns> True if the tag was added, false if it already exists.</returns>
+        public bool AddTag(string tag) {
+            if (Tags.Contains(tag)) {
+                return false;
+            }
+            Tags.Add(tag);
+            return true;
+        }
+
+        /// <summary> Removes a tag from the game mapping. </summary>
+        /// <param name="tag"> The tag to remove.</param>
+        /// <returns> True if the tag was removed, false if it did not exist.</returns>
+        public bool RemoveTag(string tag) {
+            if (!Tags.Contains(tag)) {
+                return false;
+            }
+            Tags.Remove(tag);
+            return true;
+        }
+
+        /// <summary> Clears all tags. </summary>
+        /// <returns> The previous collection of tags.</returns>
+        public List<string> ClearTags() {
+            var prev = Tags.ToList();
+            Tags.Clear();
+            return prev;
+        }
+
+        /// <summary> Sets the tags to a new collection. </summary>
+        /// <param name="tags"> The new collection of tags.</param>
+        /// <returns> The previous collection of tags.</returns>
+        public List<string> SetTags(ICollection<string> tags) {
+            var prev = Tags.ToList();
+            Tags = new HashSet<string>(tags);
+            return prev;
+        }
+
+        /// <summary> Checks if the game mapping has a specific tag. </summary>
+        /// <param name="tag"> The tag to check for.</param>
+        /// <returns> True if the tag exists, false otherwise.</returns>
+        public bool HasTag(string tag) {
+            return Tags.Contains(tag);
+        }
+        #endregion
     }
 }

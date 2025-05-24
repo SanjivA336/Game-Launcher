@@ -1,26 +1,26 @@
-﻿using System.Collections.Generic;
+﻿using Game_Launcher.Models;
+using Game_Launcher.Services;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using Game_Launcher.Models;
 
 namespace Game_Launcher.Views.Pages {
     public partial class Library : Page {
-        private List<GameMapping> _mappings;
 
-        public Library(List<GameMapping> mappings) {
+        public Library() {
             InitializeComponent();
-            _mappings = mappings;
+
+            // Resize the grid when the window is resized
             this.SizeChanged += Library_SizeChanged;
+
             DisplayGames();
         }
 
-        private void Library_SizeChanged(object sender, SizeChangedEventArgs e) {
-            UpdateTileGridLayout();
-        }
-
+        /// <summary> Displays the game tiles in the grid. </summary>
         private void DisplayGames() {
             GameTileGrid.Children.Clear();
-            foreach (var mapping in _mappings) {
+            var mappings = GameMappingManager.LoadMappings();
+            foreach (var mapping in mappings) {
                 var tile = new GameTile();
                 tile.DataContext = mapping;
                 tile.OptionsRequested += (s, e) => { this.NavigationService.Navigate(new GameOptions(mapping)); };
@@ -29,6 +29,13 @@ namespace Game_Launcher.Views.Pages {
             UpdateTileGridLayout();
         }
 
+        #region Responsive UI
+        /// <summary> Handles the size changed event of the library page. </summary>
+        private void Library_SizeChanged(object sender, SizeChangedEventArgs e) {
+            UpdateTileGridLayout();
+        }
+
+        /// <summary> Updates the layout of the game tiles in the grid based on the current size of the grid. </summary>
         private void UpdateTileGridLayout() {
             double gridWidth = GameTileGrid.ActualWidth;
             const double tileRatio = 1.25; // Height / Width
@@ -59,5 +66,6 @@ namespace Game_Launcher.Views.Pages {
                 }
             }
         }
+        #endregion
     }
 }

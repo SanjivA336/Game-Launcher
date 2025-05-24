@@ -15,19 +15,19 @@
 
    <!-- WindowChrome -->
    <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
+        <WindowChrome CaptionHeight="0" GlassFrameThickness="0"/>
     </WindowChrome.WindowChrome>
 
-    <Border BorderBrush="#1f1f1f" BorderThickness="1" SnapsToDevicePixels="True">
-       <Grid>
+    <Border BorderBrush="#1f1f1f" BorderThickness="1">
+        <Grid>
            <Grid.RowDefinitions>
                <RowDefinition Height="40"/>
                <RowDefinition Height="10*"/>
            </Grid.RowDefinitions>
 
            <!-- Title Bar -->
-           <Border BorderBrush="#1f1f1f" BorderThickness="0, 0, 0, 1">
-                <Grid Grid.Row="0" MouseDown="TitleBar_MouseDown" Background="#0b0b0b">
+            <Border Grid.Row="0" BorderBrush="#1f1f1f" Background="Black" BorderThickness="0, 0, 0, 1" SnapsToDevicePixels="True" MouseDown="TitleBar_MouseDown">
+                <Grid>
                    <Grid.ColumnDefinitions>
                        <ColumnDefinition Width="10*"/>
                        <ColumnDefinition Width="40"/>
@@ -45,14 +45,14 @@
            </Border>
 
            <!-- Main content -->
-           <Grid Grid.Row="1" Background="#0f0f0f">
+           <Grid Grid.Row="1" SnapsToDevicePixels="True">
                <Grid.ColumnDefinitions>
                    <ColumnDefinition Width="2*" MaxWidth="300"/>
                    <ColumnDefinition Width="8*"/>
                </Grid.ColumnDefinitions>
 
                <!-- Sidebar -->
-               <Border Grid.Column="0" BorderBrush="#1f1f1f" BorderThickness="0, 0, 1, 0" Padding="10" Background="#0b0b0b" >
+               <Border Grid.Column="0" BorderBrush="#1f1f1f" BorderThickness="0, 0, 1, 0" Padding="10">
                    <Grid >
                        <Grid.RowDefinitions>
                            <RowDefinition Height="70"/>
@@ -65,8 +65,10 @@
                </Border>
 
                <!-- Swappable Content Area -->
-               <Frame Name="PageHost" Grid.Column="1" NavigationUIVisibility="Hidden"/>
-           </Grid>
+                <Border Grid.Column="1" BorderThickness="0" Padding="10">
+                    <Frame Name="PageHost" Grid.Column="1" NavigationUIVisibility="Hidden"/>
+                </Border>
+            </Grid>
        </Grid>
    </Border>
 </Window>
