@@ -26,7 +26,7 @@
            </Grid.RowDefinitions>
 
            <!-- Title Bar -->
-            <Border Grid.Row="0" BorderBrush="#1f1f1f" Background="Black" BorderThickness="0, 0, 0, 1" SnapsToDevicePixels="True" MouseDown="TitleBar_MouseDown">
+            <Border Name="TitleBar" Grid.Row="0" BorderBrush="#1f1f1f" Background="Black" BorderThickness="0, 0, 0, 1" SnapsToDevicePixels="True">
                 <Grid>
                    <Grid.ColumnDefinitions>
                        <ColumnDefinition Width="10*"/>
@@ -38,9 +38,9 @@
                    <!-- Title -->
                    <TextBlock Grid.Column="0" Text="Nexus Launcher" FontSize="15" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="White" FontFamily="Segoe UI Black"/>
 
-                   <Button Grid.Column="1" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Minimize_Click"/>
-                   <Button Grid.Column="2" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Click="Maximize_Click" Name="Maximize" />
-                   <Button Grid.Column="3" Content="✖" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" Click="Close_Click"/>
+                    <Button Grid.Column="1" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding MinimizeCommand}"/>
+                    <Button Grid.Column="2" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding MaximizeCommand}"/>
+                    <Button Grid.Column="3" Content="✖" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" Command="{Binding CloseCommand}"/>
                </Grid>
            </Border>
 

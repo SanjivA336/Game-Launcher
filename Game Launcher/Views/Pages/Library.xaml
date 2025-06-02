@@ -4,7 +4,7 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:Game_Launcher.Views.Pages"
-      xmlns:userControls="clr-namespace:Game_Launcher.Views"
+      xmlns:userControls="clr-namespace:Game_Launcher.Views" xmlns:pages="clr-namespace:Game_Launcher.ViewModels.Pages" d:DataContext="{d:DesignInstance Type=pages:LibraryVM}"
       mc:Ignorable="d" 
       d:DesignHeight="700" d:DesignWidth="960"
       Title="Library">
@@ -32,8 +32,22 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- Game Tiles -->
-                    <ScrollViewer Grid.Column="0" Grid.Row="2" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-                        <UniformGrid Name="GameTileGrid" HorizontalAlignment="Stretch" />
+                    <ScrollViewer Name="GameTileGrid" Grid.Column="0" Grid.Row="2" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding GamesTiles}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{Binding Columns}" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <userControls:GameTile 
+                Width="{Binding DataContext.TileWidth, RelativeSource={RelativeSource AncestorType=Page}}"
+                Height="{Binding DataContext.TileHeight, RelativeSource={RelativeSource AncestorType=Page}}"
+                Margin="10"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </ScrollViewer>
 
                     <!-- Filters -->

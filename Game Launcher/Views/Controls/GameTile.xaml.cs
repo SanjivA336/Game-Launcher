@@ -1,35 +1,34 @@
-﻿using Game_Launcher.Models;
+﻿using Game_Launcher.ViewModels.Controls;
 using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Input;
+using System.Windows.Navigation;
 
 namespace Game_Launcher.Views {
     public partial class GameTile : UserControl {
-
-        public event EventHandler? OptionsRequested;
-
         public GameTile() {
             InitializeComponent();
+
+            this.DataContextChanged += GameTile_DataContextChanged;
         }
 
-        private void Launch_Click(object sender, RoutedEventArgs e) {
-            var game = DataContext as GameMapping;
-
-            if (game == null) {
-                Debug.WriteLine("This game does not exist.");
-                return;
+        private void GameTile_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e) {
+            if (e.OldValue is GameTileVM vm) {
+                vm.OptionsRequested -= GameTileVM_OptionsRequested;
             }
-
-            if(!game.LaunchExecutable(out string? error)) {
-                Debug.WriteLine(error);
+            if (e.NewValue is GameTileVM newVm) {
+                newVm.OptionsRequested += GameTileVM_OptionsRequested;
             }
-
-            Keyboard.ClearFocus();
         }
 
-        private void Options_Click(object sender, RoutedEventArgs e) {
-            OptionsRequested?.Invoke(this, EventArgs.Empty);
+        private void GameTileVM_OptionsRequested(object? sender, EventArgs e) {
+            NavigationService? navService = NavigationService.GetNavigationService(this);
+            if (DataContext is GameTileVM vm && navService is not null) {
+                navService.Navigate(new Views.Pages.GameOptions(vm.Game));
+            }
+            else {
+                Debug.WriteLine("NavigationService is null or DataContext is not a GameTileVM.");
+            }
         }
     }
 }

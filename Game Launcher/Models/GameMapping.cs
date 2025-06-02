@@ -1,22 +1,101 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 
 namespace Game_Launcher.Models {
-    public class GameMapping {
+    public class GameMapping : INotifyPropertyChanged {
 
-        public string _dirPath { get; set; } = string.Empty;
+        public event PropertyChangedEventHandler? PropertyChanged;
+
+        // Private backing fields
+        private string _dirPath = string.Empty;
+        private List<string> _executables = new List<string>();
+        private int _primaryExecutable = 0;
+        private string _name = "Unknown";
+        private HashSet<string> _tags = new HashSet<string>();
+
+        #region Properties
+        public string DirPathRaw {
+            get => _dirPath;
+            set {
+                if (_dirPath != value) {
+                    _dirPath = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DirPath));
+                }
+            }
+        }
         [JsonIgnore]
-        public DirectoryInfo DirPath => new DirectoryInfo(_dirPath);
+        public DirectoryInfo DirPath {
+            get => new DirectoryInfo(_dirPath);
+            set {
+                if (_dirPath != value.FullName) {
+                    _dirPath = value.FullName;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DirPathRaw));
+                }
+            }
+        }
 
-        public List<string> _executables { get; set; } = new List<string> { };
+        public List<string> ExecutablesRaw {
+            get => _executables;
+            set {
+                if (_executables != value) {
+                    _executables = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(Executables)); // Computed property depends on this
+                }
+            }
+        }
         [JsonIgnore]
-        public List<FileInfo> Executables => _executables.Select(path => new FileInfo(path)).ToList();
+        public List<FileInfo> Executables {
+            get => _executables.Select(path => new FileInfo(path)).ToList();
+            set {
+                if (value != null) {
+                    var newExecutables = value.Select(f => f.Name).ToList();
+                    if (!_executables.SequenceEqual(newExecutables)) {
+                        _executables = newExecutables;
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(ExecutablesRaw));
+                    }
+                }
+            }
+        }
 
-        public int PrimaryExecutable { get; set; } = 0;
-        public string Name { get; set; } = "Unknown";
-        public HashSet<string> Tags { get; set; } = [];
+        public int PrimaryExecutable {
+            get => _primaryExecutable;
+            set {
+                if (_primaryExecutable != value) {
+                    _primaryExecutable = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
+        public string Name {
+            get => _name;
+            set {
+                if (_name != value) {
+                    _name = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public HashSet<string> Tags {
+            get => _tags;
+            set {
+                if (_tags != value) {
+                    _tags = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        #endregion
+
+        #region Constructors
         public GameMapping() { }
 
         /// <summary> Constructor for GameMapping. </summary>
@@ -27,13 +106,9 @@ namespace Game_Launcher.Models {
             _executables = executables.Select(f => f.Name).ToList();
             Name = DirPath.Name;
         }
+        #endregion
 
-        /// <summary> Returns a string representation of the GameMapping object. </summary>
-        /// <returns> A string that represents the GameMapping object. </returns>
-        public override string ToString() {
-            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath.FullName}\{Executables[PrimaryExecutable].Name}";
-        }
-
+        #region Main Methods
         /// <summary> Gets the path to the primary executable file.</summary>
         /// <returns> The full path to the primary executable file.</returns>
         public string GetExecutablePath() {
@@ -69,6 +144,21 @@ namespace Game_Launcher.Models {
                 return false;
             }
         }
+        #endregion
+
+        #region Overrides
+        /// <summary> Raises the PropertyChanged event for a property. </summary>
+        /// <param name="propertyName"> The name of the property that changed.</param>
+        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null) {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        /// <summary> Returns a string representation of the GameMapping object. </summary>
+        /// <returns> A string that represents the GameMapping object. </returns>
+        public override string ToString() {
+            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath.FullName}\{Executables[PrimaryExecutable].Name}";
+        }
+        #endregion
 
         #region Tag Management
         /// <summary> Adds a tag to the game mapping. </summary>

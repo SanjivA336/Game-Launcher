@@ -31,6 +31,48 @@ namespace Game_Launcher.Models {
                 "cracktro"
             };
 
+        #region Temp Stuff (Values for later)
+        /* Root paths to search for executables
+        var roots = new List<DirectoryInfo> {
+                new DirectoryInfo(@"D:\Games"),
+                new DirectoryInfo(@"D:\Games\Amazon Games\Library"),
+                new DirectoryInfo(@"D:\Games\Steam\steamapps\common"),
+            };
+
+        // Paths to ignore during the search
+        var exludes = new List<DirectoryInfo> {
+                new DirectoryInfo(@"D:\D:\Games\Amazon Games"),
+                new DirectoryInfo(@"D:\Games\Steam"),
+                new DirectoryInfo(@"D:\Games\UE_5.1"),
+            };
+
+        // Keywords to ignore in the file names
+        var filters = new List<string> {
+                "redist",
+                "crash",
+                "helper",
+                "update",
+                "unins",
+                "setup",
+                "bench",
+                "anticheat",
+                "worker",
+                "agent",
+                "service",
+                "dotnet",
+                "handler",
+                "x86",
+                "32",
+                "trial",
+                "downloader",
+                "pbsvc",
+                "readme",
+                "prelaunch",
+                "cracktro"
+            };
+        */
+        #endregion
+
         public HashSet<string> _roots { get; set; } = [];
         [JsonIgnore]
         public HashSet<DirectoryInfo> Roots => _roots.Select(path => new DirectoryInfo(path)).ToHashSet();

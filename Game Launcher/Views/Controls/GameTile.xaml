@@ -5,10 +5,10 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:Game_Launcher.Views"
              mc:Ignorable="d" 
-             Height="260" Width="220"
+             d:Height="260" d:Width="200"
              >
     <Grid>
-        <Border BorderBrush="#1f1f1f" BorderThickness="1" Background="#222222">
+        <Border BorderBrush="#1f1f1f" BorderThickness="1" Background="#222222" >
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="7*"/>
@@ -16,19 +16,19 @@
                 </Grid.RowDefinitions>
 
                 <!-- Splash Image + Launch Button -->
-                <Button Name="Launch" Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0" Click="Launch_Click">
-                    <Image Source="../../Assets/placeholder.png" Stretch="UniformToFill" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Button Name="Launch" Grid.Row="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent" BorderThickness="0" Padding="0" Command="{Binding LaunchCommand}">
+                    <Image Source="/Resources/Images/placeholder.png" Stretch="UniformToFill"  HorizontalAlignment="Center" VerticalAlignment="Center"/>
                 </Button>
                 
                 <!-- Game Label + Options Button-->
-                <Button Name="Options" Grid.Row="1" Padding="5" Background="#333333" BorderThickness="0" Click="Options_Click">
+                <Button Name="Options" Grid.Row="1" Padding="5" Background="#333333" BorderThickness="0" Command="{Binding OptionsCommand}">
                     <Grid Margin="10">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="8*" />
                             <RowDefinition Height="2*" />
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="{Binding Name}" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" Foreground="White" FontSize="20" FontFamily="Segoe UI Black"/>
+                        <TextBlock Grid.Row="0" Text="{Binding Game.Name}" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" Foreground="White" FontSize="20" FontFamily="Segoe UI Black"/>
                         <TextBlock Grid.Row="1" Text="Last Played: 9/9/9" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Foreground="Gray" FontSize="10" FontFamily="Segoe UI"/>
                     </Grid>
                 </Button>

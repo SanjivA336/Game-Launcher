@@ -16,7 +16,7 @@
             </Grid.RowDefinitions>
 
             <!-- Label: Game Options -->
-            <TextBlock Grid.Row="0" Text="{Binding Name, StringFormat=Options: {0}}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
+            <TextBlock Grid.Row="0" Text="{Binding Game.Name, StringFormat=Options: {0}}" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
 
             <!-- Options Content -->
             <Border Grid.Row="1" BorderBrush="#1f1f1f" BorderThickness="0, 1, 0, 0" Background="#0c0c0c" Padding="10">
@@ -30,10 +30,11 @@
                     
                     <!-- Splash Image + Change image -->
                     <Button Grid.Row="0" Margin="10" BorderThickness="0" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                        <Image Source="../../Assets/placeholder.png" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Image Source="/Resources/Images/placeholder.png" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Button>
 
-                    <!-- Game Nickname -->
+                    <!-- Game Name Editor -->
+                    
                     
                         
                     <!-- Confirm/Cancel Changes-->
@@ -44,9 +45,9 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Button Grid.Column="0" Content="Confirm" Margin="5" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Click="Confirm_Click"/>
-                        <Button Grid.Column="1" Content="Cancel" Margin="5" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Click="Cancel_Click"/>
-                        <Button Grid.Column="2" Content="Reset" Margin="5" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Click="Reset_Click"/>
+                        <Button Grid.Column="0" Content="Confirm" Margin="5" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Command="{Binding SaveCommand}"/>
+                        <Button Grid.Column="1" Content="Cancel" Margin="5" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Command="{Binding CancelCommand}"/>
+                        <Button Grid.Column="2" Content="Reset" Margin="5" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" FontFamily="Segoe UI Black" FontSize="20" Command="{Binding ResetCommand}"/>
                     </Grid>
                 </Grid>
             </Border>

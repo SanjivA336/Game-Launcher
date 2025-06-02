@@ -1,4 +1,5 @@
 ﻿using Game_Launcher.Models;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 
@@ -8,6 +9,67 @@ namespace Game_Launcher.Services {
         private static readonly string MappingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData", "mappings.json");
 
         #region Game Scanning
+        /// <summary> Scans a single game directory for executables and returns a GameMapping object. </summary>
+        /// <param name="dirPath"> The directory path of the game.</param>
+        /// <param name="errors"> The error messages encountered during the scan.</param>
+        /// <returns> A GameMapping object representing the game, or null if no executables were found.</returns>
+        public static GameMapping? ScanSingleGame(DirectoryInfo dirPath, out string[] errors) {
+            errors = [];
+
+            if (!dirPath.Exists) {
+                // Check if the directory exists in mappings
+                var mappings = LoadMappings();
+                var existingMapping = mappings.FirstOrDefault(m => m.DirPath.FullName.Equals(dirPath.FullName, StringComparison.OrdinalIgnoreCase));
+                if (existingMapping != null) {
+                    // If it exists, return the existing mapping
+                    errors.Append($"Directory is not currently installed, found previous mappings: {dirPath.FullName}");
+                    return existingMapping;
+                }
+
+                errors.Append($"Directory does not exist: {dirPath.FullName}");
+                return null;
+            }
+
+            // Create a temporary preferences instance to reuse the existing logic
+            var prefs = Preferences.Load();
+
+            // Preserve only the ignores, replace roots and excludes with the target directory only
+            prefs.SetRoots([dirPath.FullName]);
+            prefs.ClearExcludes();
+
+            // Find executables in the given directory (and subdirs if needed)
+            var executables = FindExecutables(prefs, out errors);
+
+            var group = executables.Where(f => f.Directory?.FullName == dirPath.FullName).ToList();
+
+            // If no executables found for this directory, return null
+            if (group.Count == 0) {
+                return null;
+            }
+
+            // Construct and return a new mapping without persisting it
+            var newMapping = new GameMapping(dirPath.FullName, group);
+            if (dirPath.Exists && group.Count > 0) {
+                newMapping.AddTag("Installed");
+            }
+
+            return newMapping;
+        }
+
+        /// <summary> Scans a single game directory for executables and returns a GameMapping object. </summary>
+        /// <param name="dirPath"> The directory path of the game.</param>
+        /// <param name="errors"> The error messages encountered during the scan.</param>
+        /// <returns> A GameMapping object representing the game, or null if no executables were found.</returns>
+        public static GameMapping? ScanSingleGame(string dirPath, out string[] errors) {
+            errors = [];
+            if (string.IsNullOrWhiteSpace(dirPath)) {
+                errors.Append("Invalid Parameter: Directory path cannot be null or empty.");
+                return null;
+            }
+            var directoryInfo = new DirectoryInfo(dirPath);
+            return ScanSingleGame(directoryInfo, out errors);
+        }
+
         /// <summary> Gets all the game mappings from the specified root paths, ignoring the specified paths and keywords. </summary>
         /// <param name="rootPaths"> The root paths to search for games.</param>
         /// <param name="ignoredPaths"> The paths to ignore during the search.</param>
@@ -22,7 +84,8 @@ namespace Game_Launcher.Services {
             var mappingDict = mappings.ToDictionary(m => m.DirPath.FullName, m => m, StringComparer.OrdinalIgnoreCase);
 
             // Find all game executables
-            var executables = FindExecutables(out errors);
+            var prefs = Preferences.Load();
+            var executables = FindExecutables(prefs, out errors);
 
             // Group executables by game
             var groups = executables.GroupBy(f => f.Directory?.FullName ?? "Unknown").ToList();
@@ -48,6 +111,7 @@ namespace Game_Launcher.Services {
 
             // Save the updated mappings
             GameMappingManager.SaveMappings(mappings);
+            Debug.WriteLine($"Scanned {mappings.Count} games from {executables.Count} executables found in {mappingDict.Count} directories.");
         }
 
         /// <summary> Finds all executable files in the specified root paths, ignoring the specified paths and keywords. </summary>
@@ -56,11 +120,10 @@ namespace Game_Launcher.Services {
         /// <param name="ignoredKeywords"> The keywords to ignore in the file names.</param>
         /// <param name="errors"> The error messages encountered during the search.</param>
         /// <returns> A list of executable files found.</returns>
-        public static List<FileInfo> FindExecutables(out string[] errors) {
+        public static List<FileInfo> FindExecutables(Preferences prefs, out string[] errors) {
             errors = [];
 
             // Get preferences
-            var prefs = Preferences.Load();
             if (prefs.Roots == null) {
                 errors.Append("Invalid Operation: No roots to search.");
                 return new List<FileInfo>();
@@ -308,10 +371,33 @@ namespace Game_Launcher.Services {
             return true;
         }
 
-        /// <summary> Gets closest mappings. Sorts by closest to name, then returns the first <paramref name="limit"/> mappings. </summary>
-        /// <param name="mappings"> The list of game mappings to search.</param>
-        /// <param name="limit"> The maximum number of mappings to return. 0 returns all results in order. </param>
-        /// <returns> A list of game mappings that match the search criteria.</returns>
+        /// <summary> Gets a single mapping by its directory path. </summary>
+        /// <param name="DirPath"> The directory path of the game.</param>
+        /// <param name="error"> The error message if the operation fails.</param>
+        /// <returns> The game mapping if found, null otherwise.</returns>
+        public static GameMapping? GetMapping(string DirPath, out string? error) {
+            error = null;
+            if (DirPath is null) {
+                error = "Invalid Parameter: Directory path cannot be null.";
+                return null;
+            }
+
+            // Load existing mappings
+            var mappings = LoadMappings();
+
+            // Find the mapping by its directory path
+            var mapping = mappings.FirstOrDefault(m => m.DirPath.FullName.Equals(DirPath, StringComparison.OrdinalIgnoreCase));
+            if (mapping is null) {
+                error = "Invalid Operation: Mapping not found.";
+                return null;
+            }
+            return mapping;
+        }
+
+            /// <summary> Gets closest mappings. Sorts by closest to name, then returns the first <paramref name="limit"/> mappings. </summary>
+            /// <param name="mappings"> The list of game mappings to search.</param>
+            /// <param name="limit"> The maximum number of mappings to return. 0 returns all results in order. </param>
+            /// <returns> A list of game mappings that match the search criteria.</returns>
         public static List<GameMapping> SearchMappings(List<GameMapping> mappings, int limit) {
             // Check if the mapping is null
             if (mappings is null)
