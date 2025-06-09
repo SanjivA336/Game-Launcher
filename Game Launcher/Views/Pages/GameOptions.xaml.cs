@@ -1,6 +1,5 @@
 ﻿using Game_Launcher.Models;
 using Game_Launcher.ViewModels.Pages;
-using System.Windows;
 using System.Windows.Controls;
 
 namespace Game_Launcher.Views.Pages

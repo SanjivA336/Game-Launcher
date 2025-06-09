@@ -13,8 +13,15 @@ namespace Game_Launcher.Views.Pages {
             InitializeComponent();
 
             this.SizeChanged += Library_SizeChanged;
+            this.Loaded += Library_Loaded;
 
             DataContext = new LibraryVM();
+        }
+
+        private void Library_Loaded(object sender, RoutedEventArgs e) {
+            if (DataContext is LibraryVM vm) {
+                vm.LoadGames();
+            }
         }
 
         private void Library_SizeChanged(object sender, SizeChangedEventArgs e) {

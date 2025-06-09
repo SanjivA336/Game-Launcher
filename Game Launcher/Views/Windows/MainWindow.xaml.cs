@@ -12,7 +12,6 @@ namespace Game_Launcher {
             InitializeComponent();
 
             TitleBar.MouseDown += TitleBar_MouseDown;
-            PageHost.Navigated += PageHost_Navigated;
 
             DataContext = new MainWindowVM(
                 minimize: () => WindowState = WindowState.Minimized,
@@ -34,10 +33,6 @@ namespace Game_Launcher {
             if (e.ChangedButton == MouseButton.Left && e.ButtonState == MouseButtonState.Pressed) {
                 DragMove();
             }
-        }
-
-        private void PageHost_Navigated(object sender, System.Windows.Navigation.NavigationEventArgs e) {
-            GameMappingManager.ScanGames(out string[] errors);
         }
     }
 }

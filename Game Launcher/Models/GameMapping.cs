@@ -9,11 +9,13 @@ namespace Game_Launcher.Models {
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
+        public const string UNKNOWN_PLACEHOLDER = "Unknown";
+
         // Private backing fields
         private string _dirPath = string.Empty;
         private List<string> _executables = new List<string>();
-        private int _primaryExecutable = 0;
-        private string _name = "Unknown";
+        private int _primaryExecutableIndex = 0;
+        private string _name = UNKNOWN_PLACEHOLDER;
         private HashSet<string> _tags = new HashSet<string>();
 
         #region Properties
@@ -28,10 +30,10 @@ namespace Game_Launcher.Models {
             }
         }
         [JsonIgnore]
-        public DirectoryInfo DirPath {
-            get => new DirectoryInfo(_dirPath);
+        public DirectoryInfo? DirPath {
+            get => string.IsNullOrEmpty(_dirPath) ? null : new DirectoryInfo(_dirPath);
             set {
-                if (_dirPath != value.FullName) {
+                if (value != null && _dirPath != value.FullName) {
                     _dirPath = value.FullName;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(DirPathRaw));
@@ -51,10 +53,13 @@ namespace Game_Launcher.Models {
         }
         [JsonIgnore]
         public List<FileInfo> Executables {
-            get => _executables.Select(path => new FileInfo(path)).ToList();
+            get => _executables.Select(relPath => new FileInfo(Path.Combine(DirPath?.FullName ?? UNKNOWN_PLACEHOLDER, relPath))).ToList();
             set {
                 if (value != null) {
-                    var newExecutables = value.Select(f => f.Name).ToList();
+                    var newExecutables = value
+                        .Select(f => Path.GetRelativePath(DirPath?.FullName ?? string.Empty, f.FullName))
+                        .ToList();
+
                     if (!_executables.SequenceEqual(newExecutables)) {
                         _executables = newExecutables;
                         OnPropertyChanged();
@@ -64,12 +69,34 @@ namespace Game_Launcher.Models {
             }
         }
 
-        public int PrimaryExecutable {
-            get => _primaryExecutable;
+        public int PrimaryExecutableIndex {
+            get => _primaryExecutableIndex;
             set {
-                if (_primaryExecutable != value) {
-                    _primaryExecutable = value;
+                if (_primaryExecutableIndex != value) {
+                    _primaryExecutableIndex = value;
                     OnPropertyChanged();
+                    OnPropertyChanged(nameof(PrimaryExecutable));
+                }
+            }
+        }
+        [JsonIgnore]
+        public FileInfo? PrimaryExecutable {
+            get {
+                var relPath = _executables[_primaryExecutableIndex];
+                var fullPath = Path.Combine(DirPath?.FullName ?? UNKNOWN_PLACEHOLDER, relPath);
+                return new FileInfo(fullPath);
+            }
+            set {
+                if (value != null) {
+                    int idx = Executables.FindIndex(f => f.FullName == value.FullName);
+                    if (idx >= 0 && idx != _primaryExecutableIndex) {
+                        _primaryExecutableIndex = idx;
+                        OnPropertyChanged();
+                        OnPropertyChanged(nameof(PrimaryExecutableIndex));
+                    }
+                    else {
+                        Debug.WriteLine($"Warning: Attempted to set primary executable to {value.FullName}, but it is not in the list of executables or index is unchanged.");
+                    }
                 }
             }
         }
@@ -103,17 +130,12 @@ namespace Game_Launcher.Models {
         /// <param name="executables"> The list of executable files for the game.</param>
         public GameMapping(string path, List<FileInfo> executables) {
             _dirPath = path;
-            _executables = executables.Select(f => f.Name).ToList();
-            Name = DirPath.Name;
+            _executables = executables.Select(f => Path.GetRelativePath(path, f.FullName)).ToList();
+            Name = DirPath?.Name ?? UNKNOWN_PLACEHOLDER;
         }
         #endregion
 
         #region Main Methods
-        /// <summary> Gets the path to the primary executable file.</summary>
-        /// <returns> The full path to the primary executable file.</returns>
-        public string GetExecutablePath() {
-            return Path.Combine(DirPath.FullName, Executables[PrimaryExecutable].Name);
-        }
 
         /// <summary> Launches the primary executable file for the game. </summary>
         /// <param name="error"> The error message if the launch fails.</param>
@@ -123,24 +145,61 @@ namespace Game_Launcher.Models {
 
             // Check if the game is installed
             if (!Tags.Contains("Installed")) {
-                error = $"{Name} is not curretnly installed. If this is an error, try refreshing your library.";
+                error = $"{Name} is not currently installed. If this is an error, try refreshing your library.";
                 return false;
             }
 
             // Get the executable path and check that it exists
-            string executablePath = GetExecutablePath();
+            string? executablePath = PrimaryExecutable?.FullName ?? null;
+            if (executablePath == null) {
+                error = "Primary executable is not set or does not exist.";
+                return false;
+            }
+
+            // Check if the executable file exists
             if (!File.Exists(executablePath)) {
                 error = "Executable not found: " + executablePath;
+                return false;
+            }
+
+            // Check if the directory exists
+            if (DirPath == null || !DirPath.Exists) {
+                error = "Game directory does not exist: " + DirPath?.FullName;
                 return false;
             }
 
             // Attempt to launch
             try {
                 Process.Start(new ProcessStartInfo{FileName = executablePath, WorkingDirectory = DirPath.FullName, UseShellExecute = true});
+                Debug.WriteLine($"Successfully launched application: {executablePath}");
                 return true;
             }
             catch (Exception ex) {
                 error = $"Error occurred during launch process: {ex.Message}";
+                return false;
+            }
+
+        }
+
+        /// <summary> Opens the game directory in the file explorer. </summary>
+        /// <param name="error"> The error message if the operation fails.</param>
+        /// <returns> True if the directory was opened successfully, false otherwise.</returns>
+        public bool OpenFolder(out string? error) {
+            error = null;
+
+            // Check if the directory exists
+            if (DirPath == null || !DirPath.Exists) {
+                error = "Game directory does not exist: " + DirPath?.FullName;
+                return false;
+            }
+
+            // Attempt to open the directory
+            try {
+                Process.Start(new ProcessStartInfo { FileName = DirPath.FullName, UseShellExecute = true, Verb = "open" });
+                return true;
+            }
+            catch (Exception ex) {
+                error = $"Error opening game directory: {ex.Message}";
                 return false;
             }
         }
@@ -156,7 +215,7 @@ namespace Game_Launcher.Models {
         /// <summary> Returns a string representation of the GameMapping object. </summary>
         /// <returns> A string that represents the GameMapping object. </returns>
         public override string ToString() {
-            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath.FullName}\{Executables[PrimaryExecutable].Name}";
+            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath?.FullName ?? GameMapping.UNKNOWN_PLACEHOLDER}\{Executables[PrimaryExecutableIndex].Name}";
         }
         #endregion
 
@@ -205,6 +264,20 @@ namespace Game_Launcher.Models {
         /// <returns> True if the tag exists, false otherwise.</returns>
         public bool HasTag(string tag) {
             return Tags.Contains(tag);
+        }
+
+        /// <summary> Checks if the game mapping has any of the specified tags. </summary>
+        /// <param name="tags"> The collection of tags to check for.</param>
+        /// <returns> True if any tag exists, false otherwise.</returns>
+        public bool HasAnyTag(ICollection<string> tags) {
+            return tags.Any(tag => Tags.Contains(tag));
+        }
+
+        /// <summary> Checks if the game mapping has all of the specified tags. </summary>
+        /// <param name="tags"> The collection of tags to check for.</param>
+        /// <returns> True if all tags exist, false otherwise.</returns>
+        public bool HasAllTags(ICollection<string> tags) {
+            return tags.All(tag => Tags.Contains(tag));
         }
         #endregion
     }

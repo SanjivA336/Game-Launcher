@@ -54,7 +54,7 @@
             </Setter>
         </Style>
 
-        <!-- Gray Minimize/Maximize Button -->
+        <!-- Gray Hover Outline -->
         <Style x:Key="HoverOutline" TargetType="Button">
             <Setter Property="Template">
                 <Setter.Value>
@@ -78,5 +78,40 @@
         <Style TargetType="TextBox">
             <Setter Property="CaretBrush" Value="White"/>
         </Style>
+
+        <!-- Custom Boolean to Visibility Converter -->
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        
+        <!-- Styling for Executable List -->
+        <Style x:Key="ExecutableListBoxItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="10,5,5,5" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                            Background="{TemplateBinding Background}"
+                            SnapsToDevicePixels="true"
+                            Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#1f1f1f"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="#2f2f2f"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#4f4f4f" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Application.Resources>
 </Application>

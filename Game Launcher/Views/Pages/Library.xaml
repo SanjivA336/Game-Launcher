@@ -20,9 +20,8 @@
             <TextBlock Grid.Row="0" Text="Library" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="10" Foreground="White" FontSize="40" FontFamily="Segoe UI Black"/>
 
             <!-- Search Bar -->
-            <userControls:TextEntry Grid.Row="1" Margin="10" Placeholder="Search Library..."/>
-            
-            
+            <userControls:TextEntry Grid.Row="1" Margin="10" Placeholder="Search Library..." Input="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
             <!-- Library Content -->
             <Border Grid.Row="2" BorderBrush="#1f1f1f" BorderThickness="0, 1, 0, 0" Background="#0c0c0c" Padding="10">
                 <Grid>
@@ -33,21 +32,23 @@
 
                     <!-- Game Tiles -->
                     <ScrollViewer Name="GameTileGrid" Grid.Column="0" Grid.Row="2" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding GamesTiles}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <UniformGrid Columns="{Binding Columns}" />
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <userControls:GameTile 
-                Width="{Binding DataContext.TileWidth, RelativeSource={RelativeSource AncestorType=Page}}"
-                Height="{Binding DataContext.TileHeight, RelativeSource={RelativeSource AncestorType=Page}}"
-                Margin="10"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <Grid VerticalAlignment="Top">
+                            <ItemsControl ItemsSource="{Binding GamesTiles}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="{Binding Columns}" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <userControls:GameTile 
+                                            Width="{Binding DataContext.TileWidth, RelativeSource={RelativeSource AncestorType=Page}}"
+                                            Height="{Binding DataContext.TileHeight, RelativeSource={RelativeSource AncestorType=Page}}"
+                                            Margin="10"/>               
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Grid>
                     </ScrollViewer>
 
                     <!-- Filters -->

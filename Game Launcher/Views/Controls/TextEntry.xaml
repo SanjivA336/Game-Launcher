@@ -7,8 +7,42 @@
              mc:Ignorable="d" 
              d:DesignHeight="40" d:DesignWidth="800">
     <Grid>
-        <TextBlock Name="PlaceholderText" Text="{Binding Text, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay}" VerticalAlignment="Center" Padding="10" Foreground="#555555" />
-        <TextBox Name="InputBox" VerticalAlignment="Center" Padding="10" Foreground="White" Background="Transparent" BorderBrush="#1f1f1f" />
-        <Button Name="Clear" Content="✖" Width="40" HorizontalAlignment="Right" Foreground="White" Background="Transparent" Click="Clear_Click" />
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="40"/>
+        </Grid.ColumnDefinitions>
+        <TextBox x:Name="InputBox"
+                 Text="{Binding Input, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                 VerticalAlignment="Center"
+                 Padding="10"
+                 Foreground="White"
+                 Background="Transparent"
+                 BorderBrush="#1f1f1f" />
+
+        <TextBlock Text="{Binding Placeholder, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                   VerticalAlignment="Center"
+                   Padding="10"
+                   Foreground="#555555"
+                   IsHitTestVisible="False">
+            <TextBlock.Style>
+                <Style TargetType="TextBlock">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding Text, ElementName=InputBox}" Value="">
+                            <Setter Property="Visibility" Value="Visible"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </TextBlock.Style>
+        </TextBlock>
+
+        <Button Grid.Column="1"
+            Content="✖"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch"
+            Foreground="White"
+            Background="Transparent"
+            Style="{StaticResource HoverGray}"
+            Click="Clear_Click" />
     </Grid>
 </UserControl>

@@ -26,23 +26,53 @@ namespace Game_Launcher.ViewModels.Pages {
             set { _tileHeight = value; OnPropertyChanged(); }
         }
 
+        private string _searchText;
+        public string SearchText {
+            get => _searchText;
+            set {
+                if (_searchText != value) {
+                    _searchText = value;
+                    OnPropertyChanged();
+                    LoadGames(_searchText);
+                }
+            }
+        }
+
+
         public ICommand RefreshCommand { get; }
 
         public LibraryVM() {
-            RefreshCommand = new RelayCommand(_ => LoadGames());
-            LoadGames();
+            RefreshCommand = new RelayCommand(_ => Refresh());
+            _searchText = string.Empty;
+            Refresh();
         }
 
-        private void LoadGames() {
+        private void Refresh() {
+            GameMappingManager.ScanGames();
+            LoadGames();
+            SearchText = string.Empty;
+        }
+
+        public void LoadGames(string? searchTerm = null, ICollection<string>? tags = null) {
+            var errors = new List<string>();
+            var mappings = GameMappingManager.SearchMappings(searchTerm, 25);
+
+            if (tags != null && tags.Count > 0) {
+                mappings = mappings.Where(m => m.Tags.Any(t => tags.Contains(t))).ToList();
+            }
+
             GamesTiles.Clear();
-            GameMappingManager.ScanGames(out string[] errors);
-            var mappings = GameMappingManager.LoadMappings();
             foreach (var mapping in mappings) {
-                GamesTiles.Add(new GameTileVM(mapping));
+                try {
+                    GamesTiles.Add(new GameTileVM(mapping));
+                }
+                catch (Exception ex) {
+                    errors.Add($"Error creating tile for {mapping.Name}: {ex.Message}");
+                }
             }
 
             // Handle errors, e.g., show a message box or log them
-            if (errors.Length > 0) {
+            if (errors.Count > 0) {
                 foreach (var error in errors) {
                     System.Diagnostics.Debug.WriteLine($"Error loading game mappings: {error}");
                 }
