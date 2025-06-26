@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.ComponentModel;
+using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -7,7 +8,7 @@ namespace Game_Launcher.Models {
 
         private static readonly string PreferencesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData", "preferences.json");
 
-        private static HashSet<string> DefaultIgnores = new HashSet<string> {
+        private static readonly HashSet<string> DefaultIgnores = new HashSet<string> {
                 "redist",
                 "crash",
                 "helper",

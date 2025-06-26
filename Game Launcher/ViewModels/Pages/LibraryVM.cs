@@ -1,5 +1,4 @@
-﻿using Game_Launcher.Models;
-using Game_Launcher.Services;
+﻿using Game_Launcher.Services;
 using Game_Launcher.ViewModels.Controls;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
@@ -37,7 +36,6 @@ namespace Game_Launcher.ViewModels.Pages {
                 }
             }
         }
-
 
         public ICommand RefreshCommand { get; }
 

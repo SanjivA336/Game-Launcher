@@ -4,8 +4,8 @@
        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
        xmlns:local="clr-namespace:Game_Launcher"
-       xmlns:userControls="clr-namespace:Game_Launcher.Views"
-       mc:Ignorable="d"
+       xmlns:userControls="clr-namespace:Game_Launcher.Views" xmlns:windows="clr-namespace:Game_Launcher.ViewModels.Windows" d:DataContext="{d:DesignInstance Type=windows:MainWindowVM}"
+        mc:Ignorable="d"
        Title="Nexus"
        WindowStyle="None"
        ResizeMode="CanResize"
@@ -29,18 +29,21 @@
             <Border Name="TitleBar" Grid.Row="0" BorderBrush="#1f1f1f" Background="Black" BorderThickness="0, 0, 0, 1" SnapsToDevicePixels="True">
                 <Grid>
                    <Grid.ColumnDefinitions>
-                       <ColumnDefinition Width="10*"/>
-                       <ColumnDefinition Width="40"/>
-                       <ColumnDefinition Width="40"/>
-                       <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="140"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="40"/>
                    </Grid.ColumnDefinitions>
 
                    <!-- Title -->
                    <TextBlock Grid.Column="0" Text="Nexus Launcher" FontSize="15" Margin="10" HorizontalAlignment="Left" VerticalAlignment="Center" Foreground="White" FontFamily="Segoe UI Black"/>
+                    <Button Grid.Column="1" Content="⚙️" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding OpenPreferencesCommand}"/>
 
-                    <Button Grid.Column="1" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding MinimizeCommand}"/>
-                    <Button Grid.Column="2" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding MaximizeCommand}"/>
-                    <Button Grid.Column="3" Content="✖" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" Command="{Binding CloseCommand}"/>
+                    <Button Grid.Column="3" Content="─" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding MinimizeCommand}"/>
+                    <Button Grid.Column="4" Content="❐" Style="{StaticResource HoverGray}" Background="Transparent" Foreground="White" Command="{Binding MaximizeCommand}"/>
+                    <Button Grid.Column="5" Content="✖" Style="{StaticResource HoverRed}" Background="Transparent" Foreground="White" Command="{Binding CloseCommand}"/>
                </Grid>
            </Border>
 

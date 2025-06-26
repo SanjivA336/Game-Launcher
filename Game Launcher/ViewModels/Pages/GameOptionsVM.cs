@@ -1,7 +1,6 @@
 ﻿using Game_Launcher.Models;
 using Game_Launcher.Services;
 using Microsoft.Win32;
-using System.CodeDom.Compiler;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -175,6 +174,5 @@ namespace Game_Launcher.ViewModels.Pages {
 
             Debug.WriteLine($"Reset changes: {Game}");
         }
-
     }
 }

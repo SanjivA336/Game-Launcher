@@ -2,15 +2,17 @@
 using System.Windows;
 using System.Windows.Input;
 
-namespace Game_Launcher {
-    public partial class MainWindow : Window {
-
-        public MainWindow() {
+namespace Game_Launcher.Views.Windows {
+    /// <summary>
+    /// Interaction logic for PreferencesWindow.xaml
+    /// </summary>
+    public partial class PreferencesWindow : Window {
+        public PreferencesWindow() {
             InitializeComponent();
 
             TitleBar.MouseDown += TitleBar_MouseDown;
 
-            DataContext = new MainWindowVM(
+            DataContext = new PreferencesWindowVM(
                 minimize: () => WindowState = WindowState.Minimized,
                 maximize: () => {
                     if (WindowState == WindowState.Maximized) {
@@ -22,8 +24,6 @@ namespace Game_Launcher {
                 },
                 close: () => Close()
             );
-
-            PageHost.Navigate(new Views.Pages.Library());
         }
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e) {

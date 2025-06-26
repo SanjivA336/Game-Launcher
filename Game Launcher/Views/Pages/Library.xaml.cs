@@ -19,9 +19,7 @@ namespace Game_Launcher.Views.Pages {
         }
 
         private void Library_Loaded(object sender, RoutedEventArgs e) {
-            if (DataContext is LibraryVM vm) {
-                vm.LoadGames();
-            }
+            VM.LoadGames();
         }
 
         private void Library_SizeChanged(object sender, SizeChangedEventArgs e) {
