@@ -1,4 +1,5 @@
-﻿using Game_Launcher.ViewModels.Windows;
+using Game_Launcher.Helpers;
+using Game_Launcher.ViewModels.Windows;
 using System.Windows;
 using System.Windows.Input;
 
@@ -10,6 +11,7 @@ namespace Game_Launcher.Views.Windows {
         public PreferencesWindow() {
             InitializeComponent();
 
+            SourceInitialized += (_, _) => WindowStyler.Apply(this);
             TitleBar.MouseDown += TitleBar_MouseDown;
 
             DataContext = new PreferencesWindowVM(

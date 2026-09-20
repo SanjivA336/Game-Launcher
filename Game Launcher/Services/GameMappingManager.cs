@@ -1,4 +1,5 @@
-﻿using Game_Launcher.Models;
+﻿using Game_Launcher.Helpers;
+using Game_Launcher.Models;
 using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
@@ -32,6 +33,7 @@ namespace Game_Launcher.Services {
 
             // Create a temporary preferences instance to reuse the existing logic
             var prefs = Preferences.Load();
+            var configuredRoots = prefs.Roots; // remembered before we overwrite them, so the game can be named correctly
 
             // Preserve only the ignores, replace roots and excludes with the target directory only
             prefs.SetRoots([dirPath.FullName]);
@@ -49,6 +51,10 @@ namespace Game_Launcher.Services {
 
             // Construct and return a new mapping without persisting it
             var newMapping = new GameMapping(dirPath.FullName, group);
+            newMapping.Name = GuessGameName(dirPath, configuredRoots);
+            if (prefs.CleanNewGameNames) {
+                newMapping.Name = NameCleaner.Clean(newMapping.Name);
+            }
             if (dirPath.Exists && group.Count > 0) {
                 newMapping.AddTag("Installed");
             }
@@ -85,6 +91,7 @@ namespace Game_Launcher.Services {
 
             // Find all game executables
             var prefs = Preferences.Load();
+            var roots = prefs.Roots;
             var executables = FindExecutables(prefs, errors);
 
             // Group executables by game
@@ -94,6 +101,21 @@ namespace Game_Launcher.Services {
             foreach (var group in groups) {
                 if (!mappingDict.ContainsKey(group.Key)) {
                     var newMapping = new GameMapping(group.Key, group.ToList());
+                    newMapping.Name = GuessGameName(new DirectoryInfo(group.Key), roots);
+                    if (prefs.CleanNewGameNames) {
+                        newMapping.Name = NameCleaner.Clean(newMapping.Name);
+                    }
+
+                    // A cover left over from an earlier time this game was in the library is simply reused (custom ones stay custom).
+                    // Otherwise it's a new game, so it gets looked up once on SteamGridDB.
+                    if (CoverStore.FindExisting(group.Key) is { } existingCover) {
+                        newMapping.CoverPath = existingCover.FileName;
+                        newMapping.CoverIsCustom = existingCover.IsCustom;
+                    }
+                    else {
+                        newMapping.CoverLookupPending = true;
+                    }
+
                     mappings.Add(newMapping);
                     mappingDict[group.Key] = newMapping;
                 }
@@ -107,11 +129,46 @@ namespace Game_Launcher.Services {
                 else {
                     mapping.RemoveTag("Installed");
                 }
+
+                // Games saved before "date added" existed (and brand-new ones) get it filled in here.
+                // The folder's creation date is roughly when the game was installed; reading it changes nothing on disk.
+                if (mapping.DateAdded is null) {
+                    mapping.DateAdded = mapping.DirPath is { Exists: true } dir ? dir.CreationTime : DateTime.Now;
+                }
             }
 
             // Save the updated mappings
             GameMappingManager.SaveMappings(mappings);
             Debug.WriteLine($"Scanned {mappings.Count} games from {executables.Count} executables found in {mappingDict.Count} directories.");
+        }
+
+        /// <summary> Names a game after the folder directly under its scan root, not the (possibly nested) folder holding the .exe. </summary>
+        /// <remarks> Without this, "Games\Gamma World\bin\Gamma.exe" would be named "bin". If several roots contain the folder, the deepest one wins. </remarks>
+        /// <param name="gameDir"> The folder that holds the game's executables.</param>
+        /// <param name="roots"> The configured scan roots.</param>
+        /// <returns> The guessed game name (falls back to the folder's own name if it isn't under any root).</returns>
+        private static string GuessGameName(DirectoryInfo gameDir, IEnumerable<DirectoryInfo> roots) {
+            // Steam always installs games as "...\steamapps\common\<Game>", so the game's name is the folder after
+            // "common" no matter which root (e.g. "C:\SteamLibrary" vs "C:\SteamLibrary\steamapps\common") was scanned.
+            const string steamMarker = @"\steamapps\common\";
+            int steamIndex = gameDir.FullName.IndexOf(steamMarker, StringComparison.OrdinalIgnoreCase);
+            if (steamIndex >= 0) {
+                return gameDir.FullName.Substring(steamIndex + steamMarker.Length).Split(Path.DirectorySeparatorChar)[0];
+            }
+
+            string? bestPrefix = null;
+            foreach (var root in roots) {
+                string prefix = root.FullName.EndsWith(Path.DirectorySeparatorChar) ? root.FullName : root.FullName + Path.DirectorySeparatorChar;
+                if (gameDir.FullName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) && (bestPrefix == null || prefix.Length > bestPrefix.Length)) {
+                    bestPrefix = prefix;
+                }
+            }
+
+            if (bestPrefix == null) {
+                return gameDir.Name;
+            }
+
+            return gameDir.FullName.Substring(bestPrefix.Length).Split(Path.DirectorySeparatorChar)[0];
         }
 
         /// <summary> Finds all executable files in the specified root paths, ignoring the specified paths and keywords. </summary>
@@ -137,8 +194,16 @@ namespace Game_Launcher.Services {
                 searchQueue.Enqueue(root);
             }
 
+            // Overlapping roots (e.g. "D:\Games" and "D:\Games\Amazon Games\Library") would otherwise scan
+            // the same folder twice and list its executables twice.
+            var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
             while (searchQueue.Count > 0) {
                 var currentDir = searchQueue.Dequeue();
+
+                if (!visited.Add(currentDir.FullName)) {
+                    continue;
+                }
 
                 // Skip ignored paths
                 if (IsIgnoredPath(currentDir, prefs)) {
@@ -195,8 +260,18 @@ namespace Game_Launcher.Services {
                 return true;
             }
 
-            // Skip paths with ignored keywords
-            if (prefs.Ignores.Any(keyword => dir.FullName.Contains(keyword, StringComparison.OrdinalIgnoreCase))) {
+            // Roots, and the folders sitting directly under them, are the user's own choices/game folders
+            // (e.g. "Suyu-Windows_x86_64", "Trials Fusion"), so never skip them because of a keyword.
+            // Keyword skipping is for junk deeper inside a game, like "x86" or "_CommonRedist".
+            var roots = prefs.Roots;
+            if (roots.Any(root => root.FullName.Equals(dir.FullName, StringComparison.OrdinalIgnoreCase))
+                || (dir.Parent != null && roots.Any(root => root.FullName.Equals(dir.Parent.FullName, StringComparison.OrdinalIgnoreCase)))) {
+                return false;
+            }
+
+            // Match keywords against the folder's own name only. Matching the full path would skip a
+            // game just because some parent folder (or the game's own path) contains a word like "trial" or "32".
+            if (prefs.Ignores.Any(keyword => dir.Name.Contains(keyword, StringComparison.OrdinalIgnoreCase))) {
                 return true;
             }
 
@@ -212,7 +287,11 @@ namespace Game_Launcher.Services {
 
             Directory.CreateDirectory(Path.GetDirectoryName(MappingsPath) ?? string.Empty);
             string json = JsonSerializer.Serialize(mappings, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(MappingsPath, json);
+
+            // Write to a temp file first so a crash mid-write can't leave a half-written mappings.json
+            string tempPath = MappingsPath + ".tmp";
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, MappingsPath, overwrite: true);
         }
 
         /// <summary> Loads the game mappings from a JSON file. </summary>
@@ -221,8 +300,15 @@ namespace Game_Launcher.Services {
             if (!File.Exists(MappingsPath))
                 return new List<GameMapping>();
 
-            string json = File.ReadAllText(MappingsPath);
-            return JsonSerializer.Deserialize<List<GameMapping>>(json) ?? new List<GameMapping>();
+            try {
+                string json = File.ReadAllText(MappingsPath);
+                return JsonSerializer.Deserialize<List<GameMapping>>(json) ?? new List<GameMapping>();
+            }
+            catch (JsonException) {
+                // Corrupt file: keep it aside rather than crash at startup or silently overwrite it later
+                File.Move(MappingsPath, MappingsPath + ".bad", overwrite: true);
+                return new List<GameMapping>();
+            }
         }
         #endregion
 
@@ -247,9 +333,7 @@ namespace Game_Launcher.Services {
             }
 
             // Remove all duplicate executable files
-            var distinctExecutables = mapping.Executables.Distinct().ToList();
-            mapping.Executables.Clear();
-            mapping.Executables.AddRange(distinctExecutables);
+            mapping.ExecutablesRaw = mapping.ExecutablesRaw.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             // Load existing mappings
             var mappings = LoadMappings();
@@ -346,11 +430,7 @@ namespace Game_Launcher.Services {
                 return false;
             }
 
-            // Check if the directory exists
-            if (!mapping.DirPath.Exists) {
-                error = "Invalid Parameter: Directory does not exist.";
-                return false;
-            }
+            // (No directory-exists check on purpose: editing a game's name/tags must work even when its drive is unplugged)
 
             // Load existing mappings
             var mappings = LoadMappings();
@@ -362,6 +442,18 @@ namespace Game_Launcher.Services {
                 return false;
             }
 
+            // The cover itself is managed by the cover system (downloads and the cover picker save straight away), and the copy
+            // being saved may be older than what they stored. So keep the stored cover details...
+            mapping.CoverPath = existingMapping.CoverPath;
+            mapping.CoverMatchedName = existingMapping.CoverMatchedName;
+            mapping.CoverIsCustom = existingMapping.CoverIsCustom;
+
+            // ...except for "should this game be looked up again?": yes if it was renamed, or reset (Reset marks the copy as pending).
+            // A game with a cover the user chose is never looked up.
+            bool renamed = !string.Equals(existingMapping.Name, mapping.Name, StringComparison.OrdinalIgnoreCase);
+            mapping.CoverLookupPending = !existingMapping.CoverIsCustom
+                && (existingMapping.CoverLookupPending || mapping.CoverLookupPending || renamed);
+
             // Replace previous mapping (delete and add)
             mappings.Remove(existingMapping);
             mappings.Add(mapping);
@@ -370,6 +462,155 @@ namespace Game_Launcher.Services {
             SaveMappings(mappings);
             return true;
         }
+
+        /// <summary> Saves a game's play history (last played + launch count) without touching anything else about it. </summary>
+        /// <param name="game"> The game, whose LastPlayed and LaunchCount have already been updated.</param>
+        /// <param name="error"> The error message if the operation fails.</param>
+        /// <returns> True if operation was a success and false otherwise. </returns>
+        public static bool RecordLaunch(GameMapping game, out string? error) {
+            error = null;
+
+            var mappings = LoadMappings();
+            var stored = mappings.FirstOrDefault(m => game.DirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (stored is null) {
+                error = "Invalid Operation: Cannot record a launch for a game that isn't in the library.";
+                return false;
+            }
+
+            // Copy only the play-history fields so edits made elsewhere (name, tags, ...) aren't overwritten
+            stored.LastPlayed = game.LastPlayed;
+            stored.LaunchCount = game.LaunchCount;
+            SaveMappings(mappings);
+            return true;
+        }
+
+        /// <summary> Records that an automatic cover lookup finished for one game (found a cover or not), leaving everything else untouched. </summary>
+        /// <param name="dirPathRaw"> The game's folder path (identifies the game).</param>
+        /// <param name="coverFileName"> The downloaded cover's file name, or null if nothing was found (an existing cover is then kept).</param>
+        /// <param name="matchedName"> The title the site matched it to.</param>
+        /// <returns> The saved game, or null if it is no longer in the library.</returns>
+        public static GameMapping? SetCover(string dirPathRaw, string? coverFileName, string? matchedName) {
+            var mappings = LoadMappings();
+            var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (stored is null) {
+                return null;
+            }
+
+            // A cover the user picked is never touched by automatic lookups (this also covers picking one while a lookup was running)
+            if (!stored.CoverIsCustom && coverFileName is not null) {
+                stored.CoverPath = coverFileName;
+                stored.CoverMatchedName = matchedName;
+            }
+            stored.CoverLookupPending = false;
+
+            SaveMappings(mappings);
+            return stored;
+        }
+
+        /// <summary> One-time tidy-up: covers saved by an earlier version were named only by a fingerprint ("93bbc17ef8ec.png"). Renames them to the current style. </summary>
+        /// <returns> How many cover files were renamed (0 once everything is tidy, so it is cheap to call at every start).</returns>
+        public static int MigrateLegacyCoverNames() {
+            var mappings = LoadMappings();
+            int moved = 0;
+
+            foreach (var mapping in mappings) {
+                if (string.IsNullOrEmpty(mapping.CoverPath) || CoverStore.IsCurrentName(mapping.CoverPath)) {
+                    continue;
+                }
+
+                string oldPath = CoverArt.FullPath(mapping.CoverPath);
+                if (!File.Exists(oldPath)) {
+                    continue;
+                }
+
+                string newName = CoverStore.FileNameFor(mapping, Path.GetExtension(mapping.CoverPath), mapping.CoverIsCustom);
+                try {
+                    File.Move(oldPath, CoverArt.FullPath(newName), overwrite: true);
+                    mapping.CoverPath = newName;
+                    moved++;
+                }
+                catch (IOException ex) {
+                    Debug.WriteLine($"Could not rename cover {mapping.CoverPath}: {ex.Message}");
+                }
+            }
+
+            if (moved > 0) {
+                SaveMappings(mappings);
+            }
+            return moved;
+        }
+
+        /// <summary> Makes an image the game's cover for good: automatic lookups will no longer touch it. </summary>
+        /// <param name="coverFileName"> The image's file name inside the covers folder (already saved by CoverStore).</param>
+        /// <param name="sourceTitle"> The SteamGridDB title it was chosen from, or null if it is the user's own image.</param>
+        /// <returns> The saved game, or null if it is no longer in the library.</returns>
+        public static GameMapping? SetCustomCover(string dirPathRaw, string coverFileName, string? sourceTitle) {
+            var mappings = LoadMappings();
+            var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (stored is null) {
+                return null;
+            }
+
+            stored.CoverPath = coverFileName;
+            stored.CoverMatchedName = sourceTitle;
+            stored.CoverIsCustom = true;
+            stored.CoverLookupPending = false;
+
+            SaveMappings(mappings);
+            return stored;
+        }
+
+        /// <summary> Gives up a custom cover: its file is deleted and the game is looked up on SteamGridDB again. </summary>
+        /// <returns> The saved game, or null if it is no longer in the library.</returns>
+        public static GameMapping? UseAutomaticCover(string dirPathRaw) {
+            var mappings = LoadMappings();
+            var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (stored is null) {
+                return null;
+            }
+
+            CoverStore.DeleteFor(stored.DirPathRaw);
+            stored.CoverPath = null;
+            stored.CoverMatchedName = null;
+            stored.CoverIsCustom = false;
+            stored.CoverLookupPending = true;
+
+            SaveMappings(mappings);
+            return stored;
+        }
+
+        #region Name clean-up
+        /// <summary> One game's name before and after cleaning. </summary>
+        public record NameChange(string DirPathRaw, string OldName, string NewName);
+
+        /// <summary> What "clean up all names" would change, without changing anything (used for the confirmation preview). </summary>
+        public static List<NameChange> PreviewNameCleanup() {
+            return LoadMappings()
+                .Select(m => new NameChange(m.DirPathRaw, m.Name, NameCleaner.Clean(m.Name)))
+                .Where(c => !string.Equals(c.OldName, c.NewName, StringComparison.Ordinal))
+                .ToList();
+        }
+
+        /// <summary> Cleans every existing game name. Covers are left alone: cleaning doesn't change which game a name means, and automatic lookups already clean names before searching. </summary>
+        /// <returns> How many names changed.</returns>
+        public static int CleanUpAllNames() {
+            var mappings = LoadMappings();
+            int changed = 0;
+
+            foreach (var mapping in mappings) {
+                string cleaned = NameCleaner.Clean(mapping.Name);
+                if (!string.Equals(mapping.Name, cleaned, StringComparison.Ordinal)) {
+                    mapping.Name = cleaned;
+                    changed++;
+                }
+            }
+
+            if (changed > 0) {
+                SaveMappings(mappings);
+            }
+            return changed;
+        }
+        #endregion
 
         /// <summary> Gets a single mapping by its directory path. </summary>
         /// <param name="DirPath"> The directory path of the game.</param>
@@ -422,14 +663,11 @@ namespace Game_Launcher.Services {
         }
 
         private static int NameCompareStrict(string name, string searchTerm) {
-            name = name.ToLower();
-            searchTerm = searchTerm.ToLower();
-
-            if (name == searchTerm)
+            if (name.Equals(searchTerm, StringComparison.OrdinalIgnoreCase))
                 return 0; // Best match
-            if (name.StartsWith(searchTerm))
+            if (name.StartsWith(searchTerm, StringComparison.OrdinalIgnoreCase))
                 return 1;
-            if (name.Contains(searchTerm))
+            if (name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 return 2;
 
             return 3; // fallback: no match or weak match

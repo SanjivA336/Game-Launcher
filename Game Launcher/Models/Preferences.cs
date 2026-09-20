@@ -10,6 +10,7 @@ namespace Game_Launcher.Models {
 
         private static readonly HashSet<string> DefaultIgnores = new HashSet<string> {
                 "redist",
+                "anti-cheat",
                 "crash",
                 "helper",
                 "update",
@@ -82,7 +83,13 @@ namespace Game_Launcher.Models {
         [JsonIgnore]
         public HashSet<DirectoryInfo> Excludes => _excludes.Select(path => new DirectoryInfo(path)).ToHashSet();
 
-        public HashSet<string> Ignores { get; set; } = [];
+        public HashSet<string> Ignores { get; set; } = DefaultIgnores.ToHashSet();
+
+        /// <summary> When on, games found from now on get a cleaned-up name ("Core_Keeper" becomes "Core Keeper"). Existing games are only changed by the "clean up all names" button. </summary>
+        public bool CleanNewGameNames { get; set; } = true;
+
+        /// <summary> Personal key for the SteamGridDB API (used to download cover art). Stays in this local file; never commit it. </summary>
+        public string SteamGridDbApiKey { get; set; } = string.Empty;
 
         #region JSON Serialization
         /// <summary> Loads the user preferences from a JSON file. </summary>
@@ -91,15 +98,26 @@ namespace Game_Launcher.Models {
             if (!File.Exists(PreferencesPath))
                 return new Preferences();
 
-            string json = File.ReadAllText(PreferencesPath);
-            return JsonSerializer.Deserialize<Preferences>(json) ?? new Preferences();
+            try {
+                string json = File.ReadAllText(PreferencesPath);
+                return JsonSerializer.Deserialize<Preferences>(json) ?? new Preferences();
+            }
+            catch (JsonException) {
+                // Corrupt file: keep it aside rather than crash at startup or silently overwrite it later
+                File.Move(PreferencesPath, PreferencesPath + ".bad", overwrite: true);
+                return new Preferences();
+            }
         }
 
         /// <summary> Saves the user preferences to a JSON file. </summary>
         public void Save() {
             Directory.CreateDirectory(Path.GetDirectoryName(PreferencesPath) ?? string.Empty);
             string json = JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(PreferencesPath, json);
+
+            // Write to a temp file first so a crash mid-write can't leave a half-written preferences.json
+            string tempPath = PreferencesPath + ".tmp";
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, PreferencesPath, overwrite: true);
         }
         #endregion
 

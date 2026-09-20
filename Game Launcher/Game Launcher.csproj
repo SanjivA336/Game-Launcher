@@ -7,7 +7,18 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <!-- The icon Windows shows for Game Launcher.exe (Explorer, taskbar, Alt+Tab). It must be an .ico file. -->
+    <ApplicationIcon>Resources\Branding\nexus.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Embedded inside the program itself, so the window icon and the in-app logo load from "/Resources/Branding/..." -->
+    <Resource Include="Resources\Branding\nexus.ico" />
+    <Resource Include="Resources\Branding\nexus-logo.png" />
+
+    <!-- The source artwork: kept in the project (Tools\Generate-Icons.ps1 builds the files above from it) but not shipped -->
+    <None Include="Resources\Branding\*.svg" />
+  </ItemGroup>
 
   <ItemGroup>
     <Content Include="Resources\Images\placeholder.png">

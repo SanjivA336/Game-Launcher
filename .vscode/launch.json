@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Run Nexus Launcher",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/Game Launcher/bin/Debug/net8.0-windows/Game Launcher.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}/Game Launcher/bin/Debug/net8.0-windows",
+            "stopAtEntry": false,
+            "console": "internalConsole"
+        }
+    ]
+}

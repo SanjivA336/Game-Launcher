@@ -1,48 +1,90 @@
-﻿<UserControl x:Class="Game_Launcher.Views.TextEntry"
+<UserControl x:Class="Game_Launcher.Views.TextEntry"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
-             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:Game_Launcher.Views"
-             mc:Ignorable="d" 
-             d:DesignHeight="40" d:DesignWidth="800">
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*"/>
-            <ColumnDefinition Width="40"/>
-        </Grid.ColumnDefinitions>
-        <TextBox x:Name="InputBox"
-                 Text="{Binding Input, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                 VerticalAlignment="Center"
-                 Padding="10"
-                 Foreground="White"
-                 Background="Transparent"
-                 BorderBrush="#1f1f1f" />
+             mc:Ignorable="d"
+             d:DesignHeight="36" d:DesignWidth="400">
+    <Grid x:Name="Root" MinHeight="36" Background="Transparent">
 
-        <TextBlock Text="{Binding Placeholder, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                   VerticalAlignment="Center"
-                   Padding="10"
-                   Foreground="#555555"
-                   IsHitTestVisible="False">
-            <TextBlock.Style>
-                <Style TargetType="TextBlock">
-                    <Setter Property="Visibility" Value="Collapsed"/>
+        <!-- The visible box: fill + outline, brighter on hover/focus -->
+        <Border x:Name="Frame" CornerRadius="{StaticResource ControlRadius}" BorderThickness="1" BorderBrush="{StaticResource ControlStrokeBrush}">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Background" Value="{StaticResource ControlFillBrush}"/>
                     <Style.Triggers>
-                        <DataTrigger Binding="{Binding Text, ElementName=InputBox}" Value="">
-                            <Setter Property="Visibility" Value="Visible"/>
+                        <DataTrigger Binding="{Binding IsMouseOver, ElementName=Root}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource ControlFillHoverBrush}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=InputBox}" Value="True">
+                            <Setter Property="Background" Value="{StaticResource InputFocusedBrush}"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
-            </TextBlock.Style>
-        </TextBlock>
+            </Border.Style>
+        </Border>
 
-        <Button Grid.Column="1"
-            Content="✖"
-            HorizontalAlignment="Stretch"
-            VerticalAlignment="Stretch"
-            Foreground="White"
-            Background="Transparent"
-            Style="{StaticResource HoverGray}"
-            Click="Clear_Click" />
+        <!-- Accent line along the bottom edge while typing (the Windows 11 focus look) -->
+        <Border VerticalAlignment="Bottom" Height="2" CornerRadius="0,0,4,4" Background="{StaticResource AccentBrush}" IsHitTestVisible="False">
+            <Border.Style>
+                <Style TargetType="Border">
+                    <Setter Property="Opacity" Value="0"/>
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=InputBox}" Value="True">
+                            <Setter Property="Opacity" Value="1"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Optional leading icon -->
+            <!-- Hidden by default; TextEntry.xaml.cs shows it when a Glyph is provided -->
+            <TextBlock x:Name="GlyphIcon" Grid.Column="0" Visibility="Collapsed"
+                       FontFamily="{StaticResource IconFont}" FontSize="14" Foreground="{StaticResource TextTertiaryBrush}"
+                       VerticalAlignment="Center" Margin="12,0,0,0"/>
+
+            <TextBox x:Name="InputBox" Grid.Column="1"
+                     Text="{Binding Input, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                     VerticalAlignment="Center" Padding="12,7"/>
+
+            <!-- Placeholder text, shown only while the box is empty -->
+            <TextBlock Grid.Column="1" Text="{Binding Placeholder, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                       VerticalAlignment="Center" Margin="12,0" Foreground="{StaticResource TextTertiaryBrush}" IsHitTestVisible="False">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=InputBox}" Value="">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+
+            <!-- Clear button, shown only when there is text to clear -->
+            <Button Grid.Column="2" Content="&#xE894;" Click="Clear_Click"
+                    FontFamily="{StaticResource IconFont}" FontSize="10" Padding="0" Width="28" Height="28" Margin="0,0,4,0"
+                    AutomationProperties.Name="Clear">
+                <Button.Style>
+                    <Style TargetType="Button" BasedOn="{StaticResource SubtleButton}">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding Text, ElementName=InputBox}" Value="">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Button.Style>
+            </Button>
+        </Grid>
     </Grid>
 </UserControl>

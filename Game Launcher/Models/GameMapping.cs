@@ -17,6 +17,13 @@ namespace Game_Launcher.Models {
         private int _primaryExecutableIndex = 0;
         private string _name = UNKNOWN_PLACEHOLDER;
         private HashSet<string> _tags = new HashSet<string>();
+        private DateTime? _lastPlayed;
+        private int _launchCount;
+        private DateTime? _dateAdded;
+        private string? _coverPath;
+        private bool _coverLookupPending;
+        private string? _coverMatchedName;
+        private bool _coverIsCustom;
 
         #region Properties
         public string DirPathRaw {
@@ -48,6 +55,7 @@ namespace Game_Launcher.Models {
                     _executables = value;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(Executables)); // Computed property depends on this
+                    OnPropertyChanged(nameof(PrimaryExecutable)); // Which file is "primary" can change when the list changes
                 }
             }
         }
@@ -82,13 +90,16 @@ namespace Game_Launcher.Models {
         [JsonIgnore]
         public FileInfo? PrimaryExecutable {
             get {
+                if (_primaryExecutableIndex < 0 || _primaryExecutableIndex >= _executables.Count) {
+                    return null;
+                }
                 var relPath = _executables[_primaryExecutableIndex];
                 var fullPath = Path.Combine(DirPath?.FullName ?? UNKNOWN_PLACEHOLDER, relPath);
                 return new FileInfo(fullPath);
             }
             set {
                 if (value != null) {
-                    int idx = Executables.FindIndex(f => f.FullName == value.FullName);
+                    int idx = Executables.FindIndex(f => f.FullName.Equals(value.FullName, StringComparison.OrdinalIgnoreCase));
                     if (idx >= 0 && idx != _primaryExecutableIndex) {
                         _primaryExecutableIndex = idx;
                         OnPropertyChanged();
@@ -116,6 +127,86 @@ namespace Game_Launcher.Models {
             set {
                 if (_tags != value) {
                     _tags = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary> When the game was last launched through Nexus (null = never). Launches from other launchers aren't visible to Nexus. </summary>
+        public DateTime? LastPlayed {
+            get => _lastPlayed;
+            set {
+                if (_lastPlayed != value) {
+                    _lastPlayed = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary> How many times the game was launched through Nexus. </summary>
+        public int LaunchCount {
+            get => _launchCount;
+            set {
+                if (_launchCount != value) {
+                    _launchCount = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary> File name of the game's cover inside UserData/Covers (null = no cover, the generated placeholder is shown). </summary>
+        public string? CoverPath {
+            get => _coverPath;
+            set {
+                if (_coverPath != value) {
+                    _coverPath = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// True when the game should be looked up on SteamGridDB: it was just added, renamed, or reset. Cleared when the lookup finishes.
+        /// This flag is the ONLY thing that triggers automatic cover downloads, so games are never looked up "just because Nexus started".
+        /// </summary>
+        public bool CoverLookupPending {
+            get => _coverLookupPending;
+            set {
+                if (_coverLookupPending != value) {
+                    _coverLookupPending = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary> The title the cover site matched us to (shown on the options page so a wrong match is easy to spot). </summary>
+        public string? CoverMatchedName {
+            get => _coverMatchedName;
+            set {
+                if (_coverMatchedName != value) {
+                    _coverMatchedName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary> True once the user picks a cover themselves (their own image, or one they chose on SteamGridDB). Automatic downloads never replace it. </summary>
+        public bool CoverIsCustom {
+            get => _coverIsCustom;
+            set {
+                if (_coverIsCustom != value) {
+                    _coverIsCustom = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        /// <summary> When the game showed up: the game folder's creation date (roughly its install time), or the first scan if that's unknown. </summary>
+        public DateTime? DateAdded {
+            get => _dateAdded;
+            set {
+                if (_dateAdded != value) {
+                    _dateAdded = value;
                     OnPropertyChanged();
                 }
             }
@@ -215,7 +306,7 @@ namespace Game_Launcher.Models {
         /// <summary> Returns a string representation of the GameMapping object. </summary>
         /// <returns> A string that represents the GameMapping object. </returns>
         public override string ToString() {
-            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath?.FullName ?? GameMapping.UNKNOWN_PLACEHOLDER}\{Executables[PrimaryExecutableIndex].Name}";
+            return $@"{Name} {(Tags.Contains("Installed") ? "(✓)" : "(x)")} {(Tags.Contains("Hidden") ? "(○)" : "(◉)")}: {DirPath?.FullName ?? GameMapping.UNKNOWN_PLACEHOLDER}\{PrimaryExecutable?.Name ?? "(no executable)"}";
         }
         #endregion
 

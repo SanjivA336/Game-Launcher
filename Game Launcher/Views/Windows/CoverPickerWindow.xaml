@@ -1,0 +1,300 @@
+<Window x:Class="Game_Launcher.Views.Windows.CoverPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:windows="clr-namespace:Game_Launcher.ViewModels.Windows"
+        xmlns:userControls="clr-namespace:Game_Launcher.Views"
+        d:DataContext="{d:DesignInstance Type=windows:CoverPickerVM}"
+        mc:Ignorable="d"
+        Title="Change cover"
+        Icon="/Resources/Branding/nexus.ico"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        AllowsTransparency="False"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource WindowFallbackBrush}"
+        Foreground="{StaticResource TextPrimaryBrush}"
+        FontFamily="{StaticResource BodyFont}"
+        FontSize="14"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        Width="960" Height="720"
+        MinHeight="560" MinWidth="780">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="-1" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
+    </WindowChrome.WindowChrome>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Title bar -->
+        <Grid Name="TitleBar" Grid.Row="0" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Change cover" FontSize="12" Margin="14,0,0,0" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}" IsHitTestVisible="False"/>
+            <Button Grid.Column="1" Style="{StaticResource CloseCaptionButton}" Content="&#xE8BB;" Command="{Binding CancelCommand}" AutomationProperties.Name="Close"/>
+        </Grid>
+
+        <Border Grid.Row="1" Background="{StaticResource LayerBrush}" BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="0,1,0,0">
+            <Grid Margin="28,22,28,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Heading + source switch -->
+                <Grid Grid.Row="0" Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Text="Choose a cover" FontFamily="{StaticResource DisplayFont}" FontSize="26" FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding GameName}" Style="{StaticResource CaptionText}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"/>
+                    </StackPanel>
+
+                    <Border Grid.Column="1" Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="3" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton Style="{StaticResource SegmentedButton}" GroupName="CoverSource" Content="Find on SteamGridDB" MinWidth="150"
+                                         IsChecked="{Binding IsSteamGridDbMode, Mode=TwoWay}" AutomationProperties.Name="Find on SteamGridDB"/>
+                            <RadioButton Style="{StaticResource SegmentedButton}" GroupName="CoverSource" Content="Upload an image" MinWidth="150"
+                                         IsChecked="{Binding IsUploadMode, Mode=TwoWay}" AutomationProperties.Name="Upload an image"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Body: SteamGridDB search (shown in SteamGridDB mode) -->
+                <Grid Grid.Row="1">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsSteamGridDbMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+
+                    <!-- No API key yet -->
+                    <Border VerticalAlignment="Top">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding NoApiKey}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="A SteamGridDB API key is needed" Style="{StaticResource SectionTitleText}"/>
+                            <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Text="Add your free API key in Settings (Cover art), then open this window again. You can still upload your own image with the button above."/>
+                        </StackPanel>
+                    </Border>
+
+                    <Grid>
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasApiKey}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Search row -->
+                        <Grid Grid.Row="0" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <userControls:TextEntry Glyph="&#xE721;" Placeholder="Search SteamGridDB for a game"
+                                                    Input="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Grid.Column="1" Style="{StaticResource AccentButton}" Content="Search" Command="{Binding SearchCommand}"
+                                    Margin="10,0,0,0" MinWidth="90" AutomationProperties.Name="Search"/>
+                        </Grid>
+
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="250"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Games found -->
+                            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="12">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Games" Style="{StaticResource CaptionText}" Margin="6,0,0,8"/>
+                                    <ListBox Grid.Row="1" ItemsSource="{Binding GameResults}" SelectedItem="{Binding SelectedGameResult, Mode=TwoWay}"
+                                             Background="Transparent" BorderThickness="0" Padding="0" FocusVisualStyle="{x:Null}"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             ItemContainerStyle="{StaticResource ResultListBoxItemStyle}" AutomationProperties.Name="Games found">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*"/>
+                                                        <ColumnDefinition Width="Auto"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Grid.Column="1" Text="&#xE73E;" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="8,0,0,0"
+                                                               Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center" ToolTip="Verified on SteamGridDB">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Verified}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </Grid>
+                            </Border>
+
+                            <!-- Covers for the selected game -->
+                            <Border Grid.Column="2" Style="{StaticResource Card}" Padding="14,12,4,4">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="Covers" Style="{StaticResource CaptionText}" Margin="0,0,0,8"/>
+                                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <StackPanel>
+                                            <ListBox ItemsSource="{Binding Covers}" SelectedItem="{Binding SelectedCover, Mode=TwoWay}"
+                                                     Background="Transparent" BorderThickness="0" Padding="0" FocusVisualStyle="{x:Null}"
+                                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                     ItemContainerStyle="{StaticResource CoverChoiceItemStyle}" AutomationProperties.Name="Covers">
+                                                <ListBox.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <WrapPanel/>
+                                                    </ItemsPanelTemplate>
+                                                </ListBox.ItemsPanel>
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="132" Height="198" CornerRadius="6" Background="{StaticResource ControlFillBrush}"
+                                                                ToolTip="{Binding Label}">
+                                                            <Border.Clip>
+                                                                <RectangleGeometry Rect="0,0,132,198" RadiusX="6" RadiusY="6"/>
+                                                            </Border.Clip>
+                                                            <Image Source="{Binding ThumbUrl}" Stretch="UniformToFill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
+                                            </ListBox>
+                                            <Button Content="Show more" HorizontalAlignment="Left" Margin="0,4,0,14" Command="{Binding LoadMoreCommand}"
+                                                    AutomationProperties.Name="Show more covers">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CanLoadMore}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </Grid>
+
+                <!-- Body: upload (shown in Upload mode) -->
+                <Grid Grid.Row="1">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsUploadMode}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+
+                    <Border Style="{StaticResource Card}" Padding="24">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Top">
+                            <Border Width="220" Height="330" CornerRadius="{StaticResource CardRadius}" BorderThickness="1"
+                                    BorderBrush="{StaticResource CardStrokeBrush}" Background="{Binding UploadPreview}">
+                                <TextBlock Text="&#xE91B;" FontFamily="{StaticResource IconFont}" FontSize="40" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextDisabledBrush}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasUploadPreview}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </Border>
+
+                            <StackPanel Margin="28,0,0,0" MaxWidth="420">
+                                <TextBlock Text="Use your own image" Style="{StaticResource SectionTitleText}"/>
+                                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,6,0,16"
+                                           Text="Pick a PNG, JPG, BMP, GIF or TIFF file. A copy is saved inside Nexus (resized if it is huge), so your original file isn't touched and can be moved or deleted afterwards. Tall, portrait images look best."/>
+                                <Button HorizontalAlignment="Left" Command="{Binding ChooseFileCommand}" AutomationProperties.Name="Choose image">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Choose an image…" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <TextBlock Text="{Binding UploadFileText}" Margin="0,12,0,0" Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <!-- Footer -->
+                <Border Grid.Row="2" Padding="0,14,0,18" BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="0,1,0,0" Margin="0,14,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0"
+                                   Foreground="{StaticResource AccentBrush}"/>
+                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90"/>
+                        <Button Grid.Column="2" Style="{StaticResource AccentButton}" Content="Use this cover" Command="{Binding ApplyCommand}"
+                                MinWidth="130" Margin="8,0,0,0" AutomationProperties.Name="Use this cover"/>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
