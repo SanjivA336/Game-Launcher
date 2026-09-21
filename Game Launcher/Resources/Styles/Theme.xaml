@@ -42,6 +42,11 @@
     <SolidColorBrush x:Key="WarningBrush" Color="#FFD166"/>
     <SolidColorBrush x:Key="WarningSubtleBrush" Color="#26FFD166"/>
 
+    <!-- Deal grades on the Deals page: how big the discount is. A cool scale, so it never gets mixed up with the yellow/red of "ends soon". -->
+    <SolidColorBrush x:Key="DealLowBrush" Color="#9DB7D5"/>
+    <SolidColorBrush x:Key="DealMediumBrush" Color="#4FD1C5"/>
+    <SolidColorBrush x:Key="DealHighBrush" Color="#7BE07A"/>
+
     <!-- Fonts: Segoe UI Variable is the Windows 11 system font. The second name is the fallback for older Windows. -->
     <FontFamily x:Key="BodyFont">Segoe UI Variable Text, Segoe UI</FontFamily>
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>

@@ -110,11 +110,17 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- The transparent logo, drawn from a 256 px PNG and scaled down smoothly -->
-                    <Image Grid.Column="0" Source="/Resources/Branding/nexus-logo.png" Width="34" Height="34" Margin="3,0,10,0"
-                           RenderOptions.BitmapScalingMode="HighQuality"/>
-                    <TextBlock Grid.Column="1" Text="Nexus" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
-                               VerticalAlignment="Center"/>
+                    <!-- Logo + name: clicking them goes to the Home page (there is deliberately no separate Home link).
+                         The logo is the transparent PNG, drawn from 256 px and scaled down smoothly. -->
+                    <Button Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource ChromelessButton}" HorizontalAlignment="Left"
+                            Command="{Binding GoHomeCommand}" ToolTip="Home" AutomationProperties.Name="Home">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="/Resources/Branding/nexus-logo.png" Width="34" Height="34" Margin="3,0,10,0"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="Nexus" FontFamily="{StaticResource DisplayFont}" FontSize="24" FontWeight="SemiBold"
+                                       VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
                     <Button Grid.Column="2" Style="{StaticResource SubtleButton}" Width="40" Height="40" Padding="0"
                             Command="{Binding ToggleSidebarCommand}" ToolTip="Hide sidebar" AutomationProperties.Name="Hide sidebar">
                         <TextBlock Text="&#xE76B;" FontFamily="{StaticResource IconFont}" FontSize="18"/>
@@ -133,24 +139,59 @@
                             </Style.Triggers>
                         </Style>
                     </StackPanel.Style>
-                    <Image Source="/Resources/Branding/nexus-logo.png" Width="30" Height="30" Margin="0,2,0,4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Button Style="{StaticResource ChromelessButton}" HorizontalAlignment="Center"
+                            Command="{Binding GoHomeCommand}" ToolTip="Home" AutomationProperties.Name="Home (collapsed)">
+                        <Image Source="/Resources/Branding/nexus-logo.png" Width="30" Height="30" Margin="0,2,0,4" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    </Button>
                     <Button Style="{StaticResource SubtleButton}" Width="40" Height="40" Padding="0"
                             Command="{Binding ToggleSidebarCommand}" ToolTip="Show sidebar" AutomationProperties.Name="Show sidebar">
                         <TextBlock Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="18"/>
                     </Button>
                 </StackPanel>
 
-                <!-- Library (the only section so far), drawn as the selected item; clicking it returns to the library home -->
-                <Button Grid.Row="1" Style="{StaticResource NavButton}" Background="{StaticResource ControlFillHoverBrush}" ToolTip="Library"
-                        Command="{Binding ShowLibraryCommand}" AutomationProperties.Name="Library">
-                    <Grid>
-                        <Border Width="3" Height="16" CornerRadius="1.5" Background="{StaticResource AccentBrush}" HorizontalAlignment="Left" Margin="-9,0,0,0"/>
-                        <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource IconFont}" FontSize="16" VerticalAlignment="Center"/>
-                            <TextBlock Text="Library" Margin="14,0,0,0" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Grid>
-                </Button>
+                <!-- Page links, generated from the page list. The page you're on gets a highlight and an accent bar. -->
+                <ItemsControl Grid.Row="1" ItemsSource="{Binding NavItems}" Focusable="False">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Command="{Binding Command}" ToolTip="{Binding Title}"
+                                    AutomationProperties.Name="{Binding Title}" Margin="0,0,0,2">
+                                <Button.Style>
+                                    <Style TargetType="Button" BasedOn="{StaticResource NavButton}">
+                                        <Style.Triggers>
+                                            <!-- The page you're on: raised background (the accent bar below shows too) -->
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="Background" Value="{StaticResource ControlFillHoverBrush}"/>
+                                            </DataTrigger>
+                                            <!-- Switched off in Settings (e.g. Deals): not shown at all -->
+                                            <DataTrigger Binding="{Binding IsVisible}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                                <Grid>
+                                    <Border Width="3" Height="16" CornerRadius="1.5" Background="{StaticResource AccentBrush}"
+                                            HorizontalAlignment="Left" Margin="-9,0,0,0">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Glyph}" FontFamily="{StaticResource IconFont}" FontSize="16" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding Title}" Margin="14,0,0,0" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
                 <Button Grid.Row="3" Style="{StaticResource NavButton}" Command="{Binding OpenPreferencesCommand}" ToolTip="Settings" AutomationProperties.Name="Settings">
                     <StackPanel Orientation="Horizontal">

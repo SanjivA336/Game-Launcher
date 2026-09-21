@@ -1,4 +1,7 @@
-﻿using Game_Launcher.Views.Windows;
+using Game_Launcher.Models;
+using Game_Launcher.Services;
+using Game_Launcher.Views.Windows;
+using System.Collections.ObjectModel;
 using System.Windows.Input;
 
 namespace Game_Launcher.ViewModels.Windows {
@@ -10,7 +13,12 @@ namespace Game_Launcher.ViewModels.Windows {
         public ICommand CloseCommand { get; }
 
         public ICommand OpenPreferencesCommand { get; }
-        public ICommand ShowLibraryCommand { get; }
+
+        /// <summary> Clicking the Nexus logo/name in the sidebar: goes to the Home page. </summary>
+        public ICommand GoHomeCommand { get; }
+
+        /// <summary> The sidebar entries (Library, Apps, Deals...), built from the page list. </summary>
+        public ObservableCollection<NavItemVM> NavItems { get; } = new();
 
         private bool _isSidebarCollapsed;
         /// <summary> True while the sidebar is shrunk to a slim strip of icons. (Only remembered until Nexus closes.) </summary>
@@ -28,16 +36,38 @@ namespace Game_Launcher.ViewModels.Windows {
 
         private readonly Action _preferencesClosed;
 
-        public MainWindowVM(Action minimize, Action maximize, Action close, Action showLibrary, Action preferencesClosed) {
+        public MainWindowVM(Action minimize, Action maximize, Action close, IEnumerable<NavPage> pages,
+                            Action<string> navigate, Action goHome, Action preferencesClosed) {
             _preferencesClosed = preferencesClosed;
 
             MinimizeCommand = new RelayCommand(_ => minimize());
             MaximizeCommand = new RelayCommand(_ => maximize());
             CloseCommand = new RelayCommand(_ => close());
-            ShowLibraryCommand = new RelayCommand(_ => showLibrary());
+            GoHomeCommand = new RelayCommand(_ => goHome());
             ToggleSidebarCommand = new RelayCommand(_ => IsSidebarCollapsed = !IsSidebarCollapsed);
 
             OpenPreferencesCommand = new RelayCommand(_ => OpenPreferences());
+
+            foreach (var page in pages.Where(p => p.ShowInSidebar)) {
+                NavItems.Add(new NavItemVM(page.Id, page.Title, page.Glyph, navigate));
+            }
+        }
+
+        /// <summary> Marks the sidebar entry for the given page as the selected one (null = none, e.g. on Home). </summary>
+        public void Select(string? pageId) {
+            foreach (var item in NavItems) {
+                item.IsSelected = item.Id == pageId;
+            }
+        }
+
+        /// <summary> Shows or hides optional sidebar entries according to the saved settings (e.g. the Deals switch). </summary>
+        public void ApplyPreferences(IEnumerable<NavPage> pages, Preferences prefs) {
+            foreach (var page in pages) {
+                var item = NavItems.FirstOrDefault(i => i.Id == page.Id);
+                if (item is not null) {
+                    item.IsVisible = page.IsEnabled?.Invoke(prefs) ?? true;
+                }
+            }
         }
 
         private void OpenPreferences() {
