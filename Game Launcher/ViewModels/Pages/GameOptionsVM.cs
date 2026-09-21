@@ -1,6 +1,7 @@
-﻿using Game_Launcher.Helpers;
+using Game_Launcher.Helpers;
 using Game_Launcher.Models;
 using Game_Launcher.Services;
+using Game_Launcher.Services.Steam;
 using Game_Launcher.ViewModels.Controls;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
@@ -62,16 +63,103 @@ namespace Game_Launcher.ViewModels.Pages {
                 .GroupBy(t => t.Group)
                 .Select(g => new TagGroupVM(g.Key, g.Select(t => new TagChipVM(t, Game.HasTag(t.Name), OnTagChipChanged)).ToList()))
                 .ToList();
+            UpdateGroupVisibility();
         }
 
         private void OnTagChipChanged(TagChipVM chip) {
             if (chip.IsSelected) {
                 Game.AddTag(chip.Name);
+
+                // In a pick-one group (Completion), turning one tag on turns the other off
+                if (TagCatalog.IsSingleChoice(chip.Definition.Group)) {
+                    foreach (var other in TagGroups.SelectMany(g => g.Tags).Where(t => t != chip && t.Definition.Group == chip.Definition.Group && t.IsSelected).ToList()) {
+                        other.SetSelectedSilently(false);
+                        Game.RemoveTag(other.Name);
+                    }
+                }
             }
             else {
                 Game.RemoveTag(chip.Name);
             }
+            UpdateGroupVisibility();
         }
+
+        // Completion only makes sense for a game with a story, so it shows once the game is a Campaign (or already has a completion tag)
+        private void UpdateGroupVisibility() {
+            bool campaign = Game.HasTag(TagCatalog.Campaign);
+            foreach (var group in TagGroups) {
+                group.IsVisible = group.Name != TagCatalog.CompletionGroup || campaign || group.Tags.Any(t => t.IsSelected);
+            }
+        }
+
+        #region Clean name / suggested tags
+        private readonly Func<string, string, CancellationToken, Task<TagSuggestion>> _suggest;
+
+        private string _nameMessage = string.Empty;
+        /// <summary> Result of the last "Clean name" press (only says something when there was nothing to clean). </summary>
+        public string NameMessage {
+            get => _nameMessage;
+            private set { _nameMessage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasNameMessage)); }
+        }
+        public bool HasNameMessage => _nameMessage.Length > 0;
+
+        private string _tagsMessage = string.Empty;
+        /// <summary> Result of the last "Add suggested tags" press. </summary>
+        public string TagsMessage {
+            get => _tagsMessage;
+            private set { _tagsMessage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasTagsMessage)); }
+        }
+        public bool HasTagsMessage => _tagsMessage.Length > 0;
+
+        private bool _isSuggesting;
+        public bool IsSuggesting {
+            get => _isSuggesting;
+            private set { _isSuggesting = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanSuggest)); }
+        }
+        public bool CanSuggest => !_isSuggesting;
+
+        public ICommand CleanNameCommand { get; }
+        public ICommand SuggestTagsCommand { get; }
+
+        /// <summary> Puts the cleaned-up version of the name in the Name box (a change like any other: Save keeps it, Cancel drops it). </summary>
+        public void CleanName() {
+            string cleaned = NameCleaner.Clean(Game.Name);
+            if (cleaned == Game.Name) {
+                NameMessage = "Already clean.";
+                return;
+            }
+
+            NameMessage = string.Empty;
+            Game.Name = cleaned;
+        }
+
+        /// <summary> Looks the game up on Steam and turns on the tags Steam suggests. It only adds tags; yours stay, and you can edit the result. </summary>
+        public async Task SuggestTagsAsync() {
+            IsSuggesting = true;
+            TagsMessage = "Looking on Steam…";
+            try {
+                var result = await _suggest(Game.Name, Game.DirPathRaw, CancellationToken.None);
+                switch (result.Outcome) {
+                    case SuggestOutcome.NotFound:
+                        TagsMessage = "Not found on Steam.";
+                        break;
+                    case SuggestOutcome.Failed:
+                        TagsMessage = "Couldn't reach Steam.";
+                        break;
+                    default:
+                        var added = result.Tags.Where(t => !Game.HasTag(t)).ToList();
+                        foreach (string tag in added) Game.AddTag(tag);
+                        RebuildTagGroups(); // the chips show what was added
+                        TagsMessage = added.Count == 0 ? "No new tags." : $"Added {string.Join(", ", added)}.";
+                        break;
+                }
+            }
+            finally {
+                IsSuggesting = false;
+            }
+        }
+        #endregion
+
         public Brush CoverBrush => CoverArt.CreateCoverBrush(Game.DirPathRaw, Game.CoverPath, out _);
         public bool HasCover => !string.IsNullOrEmpty(Game.CoverPath) && File.Exists(CoverArt.FullPath(Game.CoverPath));
 
@@ -88,6 +176,10 @@ namespace Game_Launcher.ViewModels.Pages {
                 bool hasTitle = !string.IsNullOrEmpty(Game.CoverMatchedName);
                 if (Game.CoverIsCustom) {
                     return hasTitle ? $"Chosen from SteamGridDB: {Game.CoverMatchedName}" : "Your own image";
+                }
+
+                if (Game.CoverSource == "Steam") {
+                    return hasTitle ? $"Cover from Steam: {Game.CoverMatchedName}" : "Cover from Steam";
                 }
 
                 return hasTitle ? $"Cover from SteamGridDB: {Game.CoverMatchedName}" : string.Empty;
@@ -160,6 +252,56 @@ namespace Game_Launcher.ViewModels.Pages {
         }
 
         public ICommand OpenFolderCommand { get; }
+        public ICommand ChangeFolderCommand { get; }
+
+        private readonly Func<string, string?> _pickFolder;
+
+        private string _folderMessage = string.Empty;
+        /// <summary> Result of the last "Change folder" attempt (success note or the reason it was refused). </summary>
+        public string FolderMessage {
+            get => _folderMessage;
+            private set { _folderMessage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasFolderMessage)); }
+        }
+        public bool HasFolderMessage => _folderMessage.Length > 0;
+
+        private bool _folderMessageIsError;
+        public bool FolderMessageIsError {
+            get => _folderMessageIsError;
+            private set { _folderMessageIsError = value; OnPropertyChanged(); }
+        }
+
+        private void ChangeFolder() {
+            string? picked = _pickFolder("Choose the folder the game is in now");
+            if (picked is not null) {
+                RepointTo(picked);
+            }
+        }
+
+        /// <summary>
+        /// Points this game at a different folder right away (like cover changes, this saves immediately because the game's identity
+        /// is its folder). Name and tag edits still waiting for Save stay in place and are saved under the new folder.
+        /// </summary>
+        public bool RepointTo(string folder) {
+            if (!GameMappingManager.Repoint(Game.DirPathRaw, folder, out var updated, out string? error) || updated is null) {
+                FolderMessageIsError = true;
+                FolderMessage = error ?? "Couldn't change the folder.";
+                return false;
+            }
+
+            // Bring the copy being edited along, without disturbing the edits the user hasn't saved yet
+            Game.DirPathRaw = updated.DirPathRaw;
+            Game.ExecutablesRaw = updated.ExecutablesRaw.ToList();
+            Game.PrimaryExecutableIndex = updated.PrimaryExecutableIndex;
+            Game.AddTag(TagCatalog.Installed);
+
+            RefreshExecutables();
+            RefreshCoverFromStore();
+            OnPropertyChanged(nameof(IsInstalled));
+
+            FolderMessageIsError = false;
+            FolderMessage = "Folder changed. The name, tags, play history and cover were kept.";
+            return true;
+        }
 
         public ICommand AddExecutableCommand { get; }
         public ICommand RemoveExecutableCommand { get; }
@@ -172,10 +314,16 @@ namespace Game_Launcher.ViewModels.Pages {
         public event EventHandler? CloseRequested;
 
 
-        public GameOptionsVM(GameMapping game) {
+        /// <param name="suggest"> Looks a game (name, folder) up on Steam. Replaceable in tests.</param>
+        public GameOptionsVM(GameMapping game, Func<string, string?>? pickFolder = null, Func<string, string, CancellationToken, Task<TagSuggestion>>? suggest = null) {
+            _pickFolder = pickFolder ?? FolderPicker.Pick;
+            _suggest = suggest ?? SteamTagSuggester.Shared.SuggestAsync;
+            CleanNameCommand = new RelayCommand(_ => CleanName());
+            SuggestTagsCommand = new RelayCommand(async _ => await SuggestTagsAsync(), _ => CanSuggest);
             Game = game;
 
             OpenFolderCommand = new RelayCommand(_ => OpenFolder());
+            ChangeFolderCommand = new RelayCommand(_ => ChangeFolder());
 
             ChangeCoverCommand = new RelayCommand(_ => ChangeCoverRequested?.Invoke(this, EventArgs.Empty));
             UseAutomaticCoverCommand = new RelayCommand(_ => UseAutomaticCover());
@@ -280,6 +428,8 @@ namespace Game_Launcher.ViewModels.Pages {
             temp.CoverMatchedName = Game.CoverMatchedName;
             temp.CoverIsCustom = Game.CoverIsCustom;
             temp.CoverLookupPending = true;
+            temp.CoverSource = Game.CoverSource;
+            temp.Source = Game.Source; // which launcher it came from is not something Reset should forget
 
             Game = temp;
 

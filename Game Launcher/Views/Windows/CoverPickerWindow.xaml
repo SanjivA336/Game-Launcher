@@ -266,7 +266,7 @@
                             <StackPanel Margin="28,0,0,0" MaxWidth="420">
                                 <TextBlock Text="Use your own image" Style="{StaticResource SectionTitleText}"/>
                                 <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,6,0,16"
-                                           Text="Pick a PNG, JPG, BMP, GIF or TIFF file. A copy is saved inside Nexus (resized if it is huge), so your original file isn't touched and can be moved or deleted afterwards. Tall, portrait images look best."/>
+                                           Text="Pick a PNG, JPG, BMP, GIF or TIFF file. A copy is saved inside Nexus, so your original file isn't touched and can be moved or deleted afterwards. Tall, portrait images look best."/>
                                 <Button HorizontalAlignment="Left" Command="{Binding ChooseFileCommand}" AutomationProperties.Name="Choose image">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>

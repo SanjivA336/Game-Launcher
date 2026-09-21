@@ -1,4 +1,4 @@
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -166,7 +166,7 @@ namespace Game_Launcher.Models {
         }
 
         /// <summary>
-        /// True when the game should be looked up on SteamGridDB: it was just added, renamed, or reset. Cleared when the lookup finishes.
+        /// True when the game should get an automatic cover lookup (Steam, then SteamGridDB): it was just added, renamed, or reset. Cleared when the lookup finishes.
         /// This flag is the ONLY thing that triggers automatic cover downloads, so games are never looked up "just because Nexus started".
         /// </summary>
         public bool CoverLookupPending {
@@ -211,6 +211,11 @@ namespace Game_Launcher.Models {
                 }
             }
         }
+        /// <summary> The launcher the game came from ("Steam", "Epic Games", ..., "Other"). Decided when the library is scanned. </summary>
+        public string? Source { get; set; }
+
+        /// <summary> Where the current automatic cover came from ("Steam" or "SteamGridDB"); null for your own image or no cover. </summary>
+        public string? CoverSource { get; set; }
         #endregion
 
         #region Constructors

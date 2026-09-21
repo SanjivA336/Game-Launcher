@@ -1,4 +1,4 @@
-﻿using Game_Launcher.Helpers;
+using Game_Launcher.Helpers;
 using Game_Launcher.Models;
 using System.Diagnostics;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Text.Json;
 namespace Game_Launcher.Services {
     public class GameMappingManager {
 
-        private static readonly string MappingsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData", "mappings.json");
+        private static readonly string MappingsPath = AppPaths.MappingsFile;
 
         #region Game Scanning
         /// <summary> Scans a single game directory for executables and returns a GameMapping object. </summary>
@@ -82,15 +82,17 @@ namespace Game_Launcher.Services {
         /// <param name="ignoredKeywords"> The keywords to ignore in the file names.</param>
         /// <param name="errors"> The error messages encountered during the search.</param>
         /// <returns> A list of game mappings for all games found.</returns>
-        public static void ScanGames(List<string>? errors = null) {
+        /// <param name="installsProvider"> Reads which games the launchers say are installed (to work out each game's source). Replaceable in tests.</param>
+        public static ScanResult ScanGames(List<string>? errors = null, Preferences? prefs = null, Func<IReadOnlyList<LauncherInstall>>? installsProvider = null) {
             errors ??= new List<string>();
 
             // Get saved game mappings
             var mappings = GameMappingManager.LoadMappings();
             var mappingDict = mappings.Where(m => m.DirPath != null).ToDictionary(m => m.DirPath!.FullName, m => m, StringComparer.OrdinalIgnoreCase);
+            int newGames = 0;
 
-            // Find all game executables
-            var prefs = Preferences.Load();
+            // Find all game executables (with the given settings, or the saved ones)
+            prefs ??= Preferences.Load();
             var roots = prefs.Roots;
             var executables = FindExecutables(prefs, errors);
 
@@ -107,7 +109,7 @@ namespace Game_Launcher.Services {
                     }
 
                     // A cover left over from an earlier time this game was in the library is simply reused (custom ones stay custom).
-                    // Otherwise it's a new game, so it gets looked up once on SteamGridDB.
+                    // Otherwise it's a new game, so it gets a cover lookup once.
                     if (CoverStore.FindExisting(group.Key) is { } existingCover) {
                         newMapping.CoverPath = existingCover.FileName;
                         newMapping.CoverIsCustom = existingCover.IsCustom;
@@ -118,11 +120,21 @@ namespace Game_Launcher.Services {
 
                     mappings.Add(newMapping);
                     mappingDict[group.Key] = newMapping;
+                    newGames++;
                 }
             }
 
+            // Which launcher each game came from, from the launchers' own install records
+            var installs = (installsProvider ?? LauncherLibraries.InstallsOnThisPc)();
+
             // Update the IsInstalled property for each mapping
             foreach (var mapping in mappings) {
+                // (a game that has disappeared keeps the source it had, since its launcher's record is gone too)
+                string source = mapping.DirPathRaw is null ? "Other" : LauncherLibraries.SourceOf(mapping.DirPathRaw, installs);
+                if (mapping.Source is null || source != "Other") {
+                    mapping.Source = source;
+                }
+
                 if(mapping.DirPath != null && mapping.DirPath.Exists && mapping.Executables.Count > 0) {
                     mapping.AddTag("Installed");
                 }
@@ -140,7 +152,14 @@ namespace Game_Launcher.Services {
             // Save the updated mappings
             GameMappingManager.SaveMappings(mappings);
             Debug.WriteLine($"Scanned {mappings.Count} games from {executables.Count} executables found in {mappingDict.Count} directories.");
+            return new ScanResult(mappings.Count, newGames, errors.ToList());
         }
+
+        /// <summary> What a scan found. </summary>
+        /// <param name="TotalGames"> Games in the library after the scan.</param>
+        /// <param name="NewGames"> Games that weren't in the library before.</param>
+        /// <param name="Errors"> Folders that couldn't be read (permissions, disappeared drives...).</param>
+        public record ScanResult(int TotalGames, int NewGames, IReadOnlyList<string> Errors);
 
         /// <summary> Names a game after the folder directly under its scan root, not the (possibly nested) folder holding the .exe. </summary>
         /// <remarks> Without this, "Games\Gamma World\bin\Gamma.exe" would be named "bin". If several roots contain the folder, the deepest one wins. </remarks>
@@ -225,7 +244,7 @@ namespace Game_Launcher.Services {
                     }
                 }
                 catch (Exception e) {
-                    errors.Add($"{e.InnerException} in {currentDir.FullName}: {e.Message}");
+                    errors.Add($"{currentDir.FullName}: {e.Message}");
                     continue;
                 }
 
@@ -240,7 +259,7 @@ namespace Game_Launcher.Services {
                         }
                     }
                     catch (Exception e) {
-                        errors.Add($"{e.InnerException} in {currentDir.FullName}: {e.Message}");
+                        errors.Add($"{currentDir.FullName}: {e.Message}");
                         continue;
                     }
                 }
@@ -302,7 +321,13 @@ namespace Game_Launcher.Services {
 
             try {
                 string json = File.ReadAllText(MappingsPath);
-                return JsonSerializer.Deserialize<List<GameMapping>>(json) ?? new List<GameMapping>();
+                var loaded = JsonSerializer.Deserialize<List<GameMapping>>(json) ?? new List<GameMapping>();
+
+                // Tags renamed in a newer version are converted as the games load (a no-op once converted)
+                foreach (var mapping in loaded) {
+                    TagCatalog.MigrateLegacyTags(mapping);
+                }
+                return loaded;
             }
             catch (JsonException) {
                 // Corrupt file: keep it aside rather than crash at startup or silently overwrite it later
@@ -463,6 +488,137 @@ namespace Game_Launcher.Services {
             return true;
         }
 
+        #region Re-pointing a game to a different folder
+        /// <summary>
+        /// Works out which folder a game lives in when the user picks one: the picked folder itself if it holds a launchable .exe,
+        /// otherwise the single game folder found inside it. Read-only: it only lists folders and files.
+        /// </summary>
+        public static bool ResolveGameFolder(string picked, out string? gameDir, out List<FileInfo> executables, out string? error) {
+            gameDir = null;
+            executables = new List<FileInfo>();
+            error = null;
+
+            if (!Directory.Exists(picked)) {
+                error = "That folder doesn't exist.";
+                return false;
+            }
+
+            var prefs = Preferences.Load();
+            prefs.SetRoots([picked]);
+            prefs.ClearExcludes();
+
+            var groups = FindExecutables(prefs)
+                .GroupBy(f => f.Directory!.FullName, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            if (groups.Count == 0) {
+                error = "Nexus couldn't find a launchable .exe in that folder or inside it.";
+                return false;
+            }
+
+            var chosen = groups.FirstOrDefault(g => g.Key.Equals(new DirectoryInfo(picked).FullName, StringComparison.OrdinalIgnoreCase));
+            if (chosen is null && groups.Count == 1) {
+                chosen = groups[0]; // the game sits one level down (e.g. picked "Game", exe is in "Game\bin")
+            }
+
+            if (chosen is null) {
+                error = $"That folder holds several games ({string.Join(", ", groups.Take(3).Select(g => Path.GetFileName(g.Key)))}"
+                        + (groups.Count > 3 ? ", ..." : "") + "). Pick the folder of the one you want.";
+                return false;
+            }
+
+            gameDir = chosen.Key;
+            executables = chosen.ToList();
+            return true;
+        }
+
+        /// <summary>
+        /// Points an existing game at a different folder (e.g. after moving it to another drive). The game keeps its name, tags,
+        /// play history and cover; its executables are re-read from the new folder. Refuses if another game already uses that folder.
+        /// </summary>
+        /// <param name="oldDirPath"> The game's current folder (identifies the game).</param>
+        /// <param name="pickedFolder"> The folder the user chose.</param>
+        /// <param name="updated"> The saved game on success.</param>
+        public static bool Repoint(string oldDirPath, string pickedFolder, out GameMapping? updated, out string? error) {
+            updated = null;
+
+            var mappings = LoadMappings();
+            var stored = mappings.FirstOrDefault(m => oldDirPath.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (stored is null) {
+                error = "This game isn't in the library any more.";
+                return false;
+            }
+
+            if (!ResolveGameFolder(pickedFolder, out string? newDir, out var executables, out error) || newDir is null) {
+                return false;
+            }
+
+            if (newDir.Equals(oldDirPath, StringComparison.OrdinalIgnoreCase)) {
+                error = "That's already this game's folder.";
+                return false;
+            }
+
+            var clash = mappings.FirstOrDefault(m => !ReferenceEquals(m, stored) && newDir.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (clash is not null) {
+                error = $"\"{clash.Name}\" in your library already uses that folder. Hide or fix that one first.";
+                return false;
+            }
+
+            // Keep the executables the user added by hand, when they exist in the new folder too, and the chosen main one when possible
+            string oldPrimaryName = stored.PrimaryExecutable?.Name ?? string.Empty;
+            var relatives = executables.Select(f => Path.GetRelativePath(newDir, f.FullName)).ToList();
+            foreach (string oldRelative in stored.ExecutablesRaw) {
+                if (!relatives.Contains(oldRelative, StringComparer.OrdinalIgnoreCase) && File.Exists(Path.Combine(newDir, oldRelative))) {
+                    relatives.Add(oldRelative);
+                }
+            }
+
+            int primary = relatives.FindIndex(r => Path.GetFileName(r).Equals(oldPrimaryName, StringComparison.OrdinalIgnoreCase));
+
+            stored.DirPathRaw = newDir;
+            stored.ExecutablesRaw = relatives;
+            stored.PrimaryExecutableIndex = Math.Max(primary, 0);
+            stored.AddTag(TagCatalog.Installed);
+
+            // The cover file's name holds a fingerprint of the folder, so it has to be renamed along with it
+            try {
+                string? movedCover = CoverStore.MoveForNewFolder(oldDirPath, stored);
+                if (movedCover is not null) {
+                    stored.CoverPath = movedCover;
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+                Debug.WriteLine($"Could not move the cover: {ex.Message}");
+                stored.CoverPath = null;
+                stored.CoverLookupPending = !stored.CoverIsCustom; // fall back to looking it up again
+            }
+
+            SaveMappings(mappings);
+            updated = stored;
+            error = null;
+            return true;
+        }
+        #endregion
+
+        /// <summary>
+        /// Adds tags to a stored game (never removes any) and saves. Used by the bulk "add suggested tags" run.
+        /// </summary>
+        /// <returns> The tags that were actually new for the game (empty when it had them all, or when it is no longer in the library).</returns>
+        public static IReadOnlyList<string> AddTags(string dirPathRaw, IEnumerable<string> tags) {
+            var mappings = LoadMappings();
+            var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
+            if (stored is null) {
+                return [];
+            }
+
+            var added = tags.Where(t => !stored.HasTag(t)).Distinct().ToList();
+            if (added.Count > 0) {
+                foreach (string tag in added) stored.AddTag(tag);
+                SaveMappings(mappings);
+            }
+            return added;
+        }
+
         /// <summary> Saves a game's play history (last played + launch count) without touching anything else about it. </summary>
         /// <param name="game"> The game, whose LastPlayed and LaunchCount have already been updated.</param>
         /// <param name="error"> The error message if the operation fails.</param>
@@ -480,6 +636,11 @@ namespace Game_Launcher.Services {
             // Copy only the play-history fields so edits made elsewhere (name, tags, ...) aren't overwritten
             stored.LastPlayed = game.LastPlayed;
             stored.LaunchCount = game.LaunchCount;
+
+            // A game with a story moves to "In Progress" the first time you launch it (what you set yourself is left alone)
+            if (stored.HasTag(TagCatalog.Campaign) && !stored.HasTag(TagCatalog.InProgress) && !stored.HasTag(TagCatalog.Finished)) {
+                stored.AddTag(TagCatalog.InProgress);
+            }
             SaveMappings(mappings);
             return true;
         }
@@ -489,7 +650,8 @@ namespace Game_Launcher.Services {
         /// <param name="coverFileName"> The downloaded cover's file name, or null if nothing was found (an existing cover is then kept).</param>
         /// <param name="matchedName"> The title the site matched it to.</param>
         /// <returns> The saved game, or null if it is no longer in the library.</returns>
-        public static GameMapping? SetCover(string dirPathRaw, string? coverFileName, string? matchedName) {
+        /// <param name="coverSource"> Where the cover came from ("Steam" or "SteamGridDB").</param>
+        public static GameMapping? SetCover(string dirPathRaw, string? coverFileName, string? matchedName, string? coverSource = null) {
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -500,6 +662,7 @@ namespace Game_Launcher.Services {
             if (!stored.CoverIsCustom && coverFileName is not null) {
                 stored.CoverPath = coverFileName;
                 stored.CoverMatchedName = matchedName;
+                stored.CoverSource = coverSource;
             }
             stored.CoverLookupPending = false;
 
@@ -560,7 +723,7 @@ namespace Game_Launcher.Services {
             return stored;
         }
 
-        /// <summary> Gives up a custom cover: its file is deleted and the game is looked up on SteamGridDB again. </summary>
+        /// <summary> Gives up a custom cover: its file is deleted and the game gets an automatic cover lookup again. </summary>
         /// <returns> The saved game, or null if it is no longer in the library.</returns>
         public static GameMapping? UseAutomaticCover(string dirPathRaw) {
             var mappings = LoadMappings();

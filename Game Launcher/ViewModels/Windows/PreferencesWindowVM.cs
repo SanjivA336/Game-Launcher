@@ -1,5 +1,7 @@
-﻿using Game_Launcher.Models;
+using Game_Launcher.Helpers;
+using Game_Launcher.Models;
 using Game_Launcher.Services;
+using Game_Launcher.ViewModels.Pages;
 using Microsoft.Win32;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -35,6 +37,23 @@ namespace Game_Launcher.ViewModels.Windows {
                 }
             }
         }
+
+        #region Data folder
+        /// <summary> Where Nexus keeps its settings, game details and covers. </summary>
+        public string DataFolderPath => AppPaths.DataDirectory;
+
+        public ICommand OpenDataFolderCommand { get; }
+
+        private void OpenDataFolder() {
+            try {
+                Directory.CreateDirectory(AppPaths.DataDirectory); // it only exists once something has been saved
+                Process.Start(new ProcessStartInfo { FileName = AppPaths.DataDirectory, UseShellExecute = true, Verb = "open" });
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception) {
+                Debug.WriteLine($"Could not open the data folder: {ex.Message}");
+            }
+        }
+        #endregion
 
         #region Clean up existing names
         // Cleaning ALL names can't be undone (it overwrites names the user may have typed), so it takes two steps:
@@ -72,6 +91,52 @@ namespace Game_Launcher.ViewModels.Windows {
             }
         }
 
+        /// <summary> Every game the last clean-up renamed ("old  ->  new"). </summary>
+        public ObservableCollection<string> CleanupRenamed { get; } = new();
+
+        /// <summary> Adds Steam's suggested tags to every game (with progress, and lists of what changed and what wasn't found). </summary>
+        public BulkTagsVM Tags { get; } = new();
+
+        #region SteamGridDB key
+        private readonly Func<string, CancellationToken, Task<CoverOutcome>> _testKey;
+
+        private string _keyStatus = string.Empty;
+        /// <summary> Result of pressing "Test key". </summary>
+        public string KeyStatus {
+            get => _keyStatus;
+            private set { _keyStatus = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasKeyStatus)); }
+        }
+        public bool HasKeyStatus => _keyStatus.Length > 0;
+
+        public ICommand OpenKeyPageCommand { get; }
+        public ICommand TestKeyCommand { get; }
+
+        private void OpenKeyPage() {
+            try {
+                Process.Start(new ProcessStartInfo { FileName = "https://www.steamgriddb.com/profile/preferences/api", UseShellExecute = true });
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException) {
+                Debug.WriteLine($"Could not open the SteamGridDB page: {ex.Message}");
+            }
+        }
+
+        /// <summary> Tries the key in the box (saved or not) with one small search. </summary>
+        public async Task TestKeyAsync() {
+            string key = (SteamGridDbApiKey ?? string.Empty).Trim();
+            if (key.Length == 0) {
+                KeyStatus = "Paste your key first.";
+                return;
+            }
+
+            KeyStatus = "Testing…";
+            KeyStatus = await _testKey(key, CancellationToken.None) switch {
+                CoverOutcome.InvalidKey => "SteamGridDB rejected this key.",
+                CoverOutcome.Unavailable => "Couldn't reach SteamGridDB.",
+                _ => "Key works.",
+            };
+        }
+        #endregion
+
         public ICommand StartCleanupCommand { get; }
         public ICommand ConfirmCleanupCommand { get; }
         public ICommand CancelCleanupCommand { get; }
@@ -80,6 +145,7 @@ namespace Game_Launcher.ViewModels.Windows {
             _pendingCleanup = GameMappingManager.PreviewNameCleanup();
             CleanupExamples.Clear();
             CleanupStatus = string.Empty;
+            CleanupRenamed.Clear();
 
             if (_pendingCleanup.Count == 0) {
                 IsConfirmingCleanup = false;
@@ -99,9 +165,14 @@ namespace Game_Launcher.ViewModels.Windows {
         }
 
         private void ConfirmCleanup() {
+            var renamed = _pendingCleanup.ToList();
             int changed = GameMappingManager.CleanUpAllNames();
             IsConfirmingCleanup = false;
             CleanupExamples.Clear();
+            CleanupRenamed.Clear();
+            foreach (var change in renamed) {
+                CleanupRenamed.Add($"{change.OldName}  →  {change.NewName}");
+            }
             CleanupStatus = changed == 1 ? "Renamed 1 game." : $"Renamed {changed} games.";
         }
 
@@ -111,27 +182,158 @@ namespace Game_Launcher.ViewModels.Windows {
         }
         #endregion
 
-        public ObservableCollection<DirectoryInfo> Roots => new([.. Preferences.Roots]);
+        #region Tabs
+        private enum Tab { Sources, Apps, General }
+        private Tab _tab = Tab.Sources;
+
+        // One property per tab so each radio button can bind to its own bool
+        public bool IsSourcesTab { get => _tab == Tab.Sources; set { if (value) SelectTab(Tab.Sources); } }
+        public bool IsAppsTab { get => _tab == Tab.Apps; set { if (value) SelectTab(Tab.Apps); } }
+        public bool IsGeneralTab { get => _tab == Tab.General; set { if (value) SelectTab(Tab.General); } }
+
+        private void SelectTab(Tab tab) {
+            if (_tab == tab) {
+                return;
+            }
+
+            _tab = tab;
+            OnPropertyChanged(nameof(IsSourcesTab));
+            OnPropertyChanged(nameof(IsAppsTab));
+            OnPropertyChanged(nameof(IsGeneralTab));
+
+            // Looking for installed launchers takes a moment, so it only happens when the Apps tab is actually opened
+            if (tab == Tab.Apps) {
+                _ = Apps.LoadAsync();
+            }
+        }
+        #endregion
+
+        /// <summary> The Apps tab. Unlike the rest of Settings its changes are saved immediately (they live in apps.json). </summary>
+        public AppsVM Apps { get; } = new();
+
+        /// <summary> The editable scan folders, excluded folders and ignore words (staged until Save). </summary>
+        public SourcesEditorVM Sources { get; }
+
+        private bool _dealsPageEnabled;
+        /// <summary> Whether the Deals page appears in the sidebar. </summary>
+        public bool DealsPageEnabled {
+            get => _dealsPageEnabled;
+            set {
+                if (_dealsPageEnabled != value) {
+                    _dealsPageEnabled = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public ICommand MinimizeCommand { get; }
         public ICommand MaximizeCommand { get; }
         public ICommand CloseCommand { get; }
 
-        public ICommand AddRootCommand { get; }
-        public ICommand RemoveRootCommand { get; }
-
         public ICommand SaveCommand { get; }
+        public ICommand RescanCommand { get; }
         public ICommand CancelCommand { get; }
-        public ICommand ResetCommand { get; }
 
+        #region Save and rescan
+        private bool _isScanning;
+        public bool IsScanning {
+            get => _isScanning;
+            private set {
+                _isScanning = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanEdit));
+            }
+        }
 
+        private bool _scanFinished;
+        /// <summary> True once the rescan is done and its summary is showing (the window then offers a Done button). </summary>
+        public bool ScanFinished {
+            get => _scanFinished;
+            private set {
+                _scanFinished = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanEdit));
+                OnPropertyChanged(nameof(ShowSaveButtons));
+            }
+        }
 
-        public PreferencesWindowVM(Action minimize, Action maximize, Action close) {
+        /// <summary> The whole form is locked while a scan runs or its result is showing. </summary>
+        public bool CanEdit => !_isScanning && !_scanFinished;
+        public bool ShowSaveButtons => !_scanFinished;
+
+        private string _scanSummary = string.Empty;
+        public string ScanSummary {
+            get => _scanSummary;
+            private set { _scanSummary = value; OnPropertyChanged(); }
+        }
+
+        /// <summary> Folders the scan couldn't read, shown under the summary. </summary>
+        public ObservableCollection<string> ScanErrors { get; } = new();
+
+        /// <summary> The Save button says "Save and rescan" when the scan folders or ignore words changed. </summary>
+        public string SaveLabel => Sources.HasChanges ? "Save and rescan" : "Save";
+
+        private void ApplyToPreferences() {
+            Preferences.SteamGridDbApiKey = (SteamGridDbApiKey ?? string.Empty).Trim();
+            Preferences.CleanNewGameNames = CleanNewGameNames;
+            Preferences.DealsPageEnabled = DealsPageEnabled;
+            Sources.BuildPreferences(Preferences);
+            Preferences.Save();
+        }
+
+        private async Task SaveAsync(bool forceRescan) {
+            bool rescan = forceRescan || Sources.HasChanges;
+            ApplyToPreferences();
+
+            if (!rescan) {
+                _close();
+                return;
+            }
+
+            IsScanning = true;
+            ScanSummary = "Scanning your folders…";
+            ScanErrors.Clear();
+            try {
+                var errors = new List<string>();
+                var result = await Task.Run(() => GameMappingManager.ScanGames(errors, Preferences));
+
+                string added = result.NewGames == 0 ? "no new games" : result.NewGames == 1 ? "1 new" : $"{result.NewGames} new";
+                ScanSummary = $"Found {result.TotalGames} games ({added}).";
+                if (result.Errors.Count > 0) {
+                    ScanSummary += result.Errors.Count == 1 ? " 1 folder couldn't be read:" : $" {result.Errors.Count} folders couldn't be read:";
+                    foreach (string error in result.Errors.Take(5)) {
+                        ScanErrors.Add(error);
+                    }
+                }
+            }
+            catch (Exception ex) {
+                ScanSummary = $"The scan failed: {ex.Message}";
+            }
+            finally {
+                IsScanning = false;
+                ScanFinished = true;
+            }
+        }
+        #endregion
+
+        /// <param name="testKey"> Tries a SteamGridDB key. Replaceable in tests.</param>
+        public PreferencesWindowVM(Action minimize, Action maximize, Action close, Func<string, string?>? pickFolder = null, Func<IReadOnlyList<LauncherLibrary>>? findLibraries = null, Func<string, CancellationToken, Task<CoverOutcome>>? testKey = null) {
+            _testKey = testKey ?? CoverService.TestKeyAsync;
+            OpenKeyPageCommand = new RelayCommand(_ => OpenKeyPage());
+            TestKeyCommand = new RelayCommand(async _ => await TestKeyAsync());
             Preferences = Preferences.Load();
             _steamGridDbApiKey = Preferences.SteamGridDbApiKey;
             _cleanNewGameNames = Preferences.CleanNewGameNames;
+            _dealsPageEnabled = Preferences.DealsPageEnabled;
             _close = close;
+            Sources = new SourcesEditorVM(Preferences, pickFolder, findLibraries, openApps: () => IsAppsTab = true);
+            Sources.PropertyChanged += (_, e) => {
+                if (e.PropertyName == nameof(SourcesEditorVM.HasChanges)) {
+                    OnPropertyChanged(nameof(SaveLabel));
+                }
+            };
 
+            OpenDataFolderCommand = new RelayCommand(_ => OpenDataFolder());
             StartCleanupCommand = new RelayCommand(_ => StartCleanup());
             ConfirmCleanupCommand = new RelayCommand(_ => ConfirmCleanup());
             CancelCleanupCommand = new RelayCommand(_ => CancelCleanup());
@@ -140,54 +342,10 @@ namespace Game_Launcher.ViewModels.Windows {
             MaximizeCommand = new RelayCommand(_ => maximize());
             CloseCommand = new RelayCommand(_ => close());
 
-            AddRootCommand = new RelayCommand(_ => AddRoot());
-            RemoveRootCommand = new RelayCommand(_ => RemovePrimaryFolder());
-
-            SaveCommand = new RelayCommand(_ => SaveChanges());
-            CancelCommand = new RelayCommand(_ => CancelChanges());
-            ResetCommand = new RelayCommand(_ => ResetChanges());
-        }
-
-        private void AddRoot() {
-            var dlg = new OpenFolderDialog {
-                Title = "Select a root folder",
-                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyComputer),
-                ValidateNames = true,
-                Multiselect = false,
-            };
-
-            if (dlg.ShowDialog() == true) {
-                var fullPath = new DirectoryInfo(dlg.FolderName);
-
-                // Preferences.Roots builds a fresh throwaway set on every read, so adding to it did nothing.
-                // AddRoot writes to the real underlying set (which also ignores exact duplicates).
-                if (!Preferences.Roots.Any(r => r.FullName.Equals(fullPath.FullName, StringComparison.OrdinalIgnoreCase))) {
-                    Preferences.AddRoot(fullPath);
-                    OnPropertyChanged(nameof(Roots));
-                }
-                else {
-                    Debug.WriteLine("Root folder already exists in list.");
-                }
-            }
-        }
-
-        private void RemovePrimaryFolder() {
-
-        }
-
-        private void SaveChanges() {
-            Preferences.SteamGridDbApiKey = (SteamGridDbApiKey ?? string.Empty).Trim();
-            Preferences.CleanNewGameNames = CleanNewGameNames;
-            Preferences.Save();
-            _close();
-        }
-
-        private void CancelChanges() {
-            _close();
-        }
-
-        private void ResetChanges() {
-
+            // async void is only acceptable here because a button click is an event handler; the task's own errors are caught inside SaveAsync
+            SaveCommand = new RelayCommand(async _ => await SaveAsync(forceRescan: false));
+            RescanCommand = new RelayCommand(async _ => await SaveAsync(forceRescan: true));
+            CancelCommand = new RelayCommand(_ => _close());
         }
     }
 }

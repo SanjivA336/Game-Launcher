@@ -1,4 +1,5 @@
 using Game_Launcher.Models;
+using Game_Launcher.Services.Steam;
 
 namespace Game_Launcher.Services {
     public enum CoverRunStatus { Done, NoApiKey, InvalidKey, Unavailable }
@@ -19,6 +20,12 @@ namespace Game_Launcher.Services {
                 && game.Name != GameMapping.UNKNOWN_PLACEHOLDER;
         }
 
+        /// <summary> Checks a SteamGridDB key by making one small search with it. </summary>
+        public static async Task<CoverOutcome> TestKeyAsync(string apiKey, CancellationToken ct = default) {
+            var client = new SteamGridDbClient(apiKey.Trim(), Environment.GetEnvironmentVariable("NEXUS_STEAMGRIDDB_URL"));
+            return (await client.SearchGamesAsync("Portal", ct)).Outcome;
+        }
+
         /// <summary> Creates a client using the API key from Preferences, or null if there is no key yet. </summary>
         public static SteamGridDbClient? CreateClient() {
             string apiKey = Preferences.Load().SteamGridDbApiKey.Trim();
@@ -31,21 +38,34 @@ namespace Game_Launcher.Services {
         }
 
         /// <summary>
+        /// Finds a cover for one game: Steam's portrait first (no key needed), then SteamGridDB, but only when the user has given a key.
+        /// A game Steam has no portrait for, and nobody else has either, simply keeps the generated placeholder.
+        /// </summary>
+        private static async Task<(CoverDownload Result, string Source)> FindOneAsync(GameMapping game, string name, SteamGridDbClient? client, SteamCovers steam, CancellationToken ct) {
+            var fromSteam = await steam.FindCoverAsync(name, game.DirPathRaw, ct);
+            if (fromSteam.Outcome is CoverOutcome.Found or CoverOutcome.Unavailable || client is null) {
+                return (fromSteam, "Steam"); // found, or Steam is unreachable (worth retrying), or there is nowhere else to look
+            }
+
+            return (await client.FindCoverAsync(name, ct), "SteamGridDB");
+        }
+
+        /// <summary>
         /// Looks up and downloads covers for every pending game, one at a time (kind to the free API).
         /// Call it from the UI thread: the awaits keep the window responsive, and the callbacks then also run on the UI thread.
         /// </summary>
         /// <param name="onStatus"> Progress text like "Downloading cover art… 3 of 12".</param>
         /// <param name="onCoverChanged"> Called with the saved game after each lookup so the screen can refresh that game.</param>
-        public static async Task<CoverRunResult> DownloadMissingCoversAsync(Action<string>? onStatus = null, Action<GameMapping>? onCoverChanged = null, CancellationToken ct = default) {
+        /// <param name="steamCovers"> Where Steam's covers come from. Replaceable in tests.</param>
+        public static async Task<CoverRunResult> DownloadMissingCoversAsync(Action<string>? onStatus = null, Action<GameMapping>? onCoverChanged = null, CancellationToken ct = default, SteamCovers? steamCovers = null) {
+            steamCovers ??= SteamCovers.Shared;
             // Check for work first, so a launch where nothing is pending doesn't even read the API key or open a connection
             if (!GameMappingManager.LoadMappings().Any(NeedsCover)) {
                 return new(CoverRunStatus.Done, 0, 0);
             }
 
+            // Steam needs no key. A SteamGridDB key (optional) only adds a fallback for games Steam has no cover for.
             var client = CreateClient();
-            if (client is null) {
-                return new(CoverRunStatus.NoApiKey, 0, 0);
-            }
 
             int downloaded = 0, notFound = 0;
             string? lastFailure = null; // the reason a game was skipped in the most recent round (null = nothing was skipped)
@@ -66,7 +86,7 @@ namespace Game_Launcher.Services {
                     string searchedName = game.Name;
                     onStatus?.Invoke($"Downloading cover art… {i + 1} of {pending.Count}");
 
-                    var result = await client.FindCoverAsync(searchedName, ct);
+                    var (result, source) = await FindOneAsync(game, searchedName, client, steamCovers, ct);
                     GameMapping? saved = null;
 
                     switch (result.Outcome) {
@@ -81,7 +101,7 @@ namespace Game_Launcher.Services {
                             if (result.Outcome == CoverOutcome.Found) {
                                 // SaveAsync replaces any earlier cover file for this game
                                 string fileName = await CoverStore.SaveAsync(current, result.Image!, result.Extension!, custom: false, ct);
-                                saved = GameMappingManager.SetCover(current.DirPathRaw, fileName, result.MatchedName);
+                                saved = GameMappingManager.SetCover(current.DirPathRaw, fileName, result.MatchedName, source);
                                 downloaded++;
                             }
                             else {

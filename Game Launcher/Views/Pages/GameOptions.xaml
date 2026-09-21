@@ -1,4 +1,4 @@
-<Page x:Class="Game_Launcher.Views.Pages.GameOptions"
+﻿<Page x:Class="Game_Launcher.Views.Pages.GameOptions"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -92,7 +92,7 @@
                         <!-- Only for a cover you picked: go back to letting Nexus find one -->
                         <Button Content="Use automatic cover" Style="{StaticResource SubtleButton}" Margin="6,0,0,0"
                                 Command="{Binding UseAutomaticCoverCommand}" AutomationProperties.Name="Use automatic cover"
-                                ToolTip="Remove your chosen cover and let Nexus look one up on SteamGridDB">
+                                ToolTip="Remove your chosen cover and let Nexus find one automatically">
                             <Button.Visibility>
                                 <Binding Path="IsCustomCover" Converter="{StaticResource BoolToVisibilityConverter}"/>
                             </Button.Visibility>
@@ -104,12 +104,34 @@
                             <TextBlock Text="Location" Style="{StaticResource CaptionText}"/>
                             <TextBlock Text="{Binding Game.DirPathRaw}" TextWrapping="Wrap" FontSize="13" Margin="0,6,0,14"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>
-                            <Button Command="{Binding OpenFolderCommand}" HorizontalAlignment="Left">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                    <TextBlock Text="Open folder" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Button>
+                            <StackPanel Orientation="Horizontal">
+                                <Button Command="{Binding OpenFolderCommand}" AutomationProperties.Name="Open folder">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Open folder" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button Command="{Binding ChangeFolderCommand}" Margin="8,0,0,0" ToolTip="Moved the game? Point Nexus at its new folder; name, tags, history and cover are kept"
+                                        AutomationProperties.Name="Change folder">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8DE;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Change folder…" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Text="{Binding FolderMessage}" TextWrapping="Wrap" Margin="0,12,0,0"
+                                       Visibility="{Binding HasFolderMessage, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding FolderMessageIsError}" Value="True">
+                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -119,9 +141,14 @@
 
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Text="Name" Style="{StaticResource SectionTitleText}"/>
+                            <Grid>
+                                <TextBlock Text="Name" Style="{StaticResource SectionTitleText}" VerticalAlignment="Center"/>
+                                <Button Content="Clean name" HorizontalAlignment="Right" Command="{Binding CleanNameCommand}" AutomationProperties.Name="Clean name"/>
+                            </Grid>
                             <userControls:TextEntry Margin="0,12,0,0" Placeholder="Game name"
                                                     Input="{Binding Game.Name, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="{Binding NameMessage}" Style="{StaticResource CaptionText}" Margin="0,8,0,0"
+                                       Visibility="{Binding HasNameMessage, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         </StackPanel>
                     </Border>
 
@@ -161,14 +188,18 @@
 
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
-                            <TextBlock Text="Tags" Style="{StaticResource SectionTitleText}"/>
-                            <TextBlock Text="Describe how this game works. Use them to filter your library." Style="{StaticResource CaptionText}"
-                                       TextWrapping="Wrap" Margin="0,4,0,4"/>
+                            <Grid>
+                                <TextBlock Text="Tags" Style="{StaticResource SectionTitleText}" VerticalAlignment="Center"/>
+                                <Button Content="Add suggested tags" HorizontalAlignment="Right" Command="{Binding SuggestTagsCommand}"
+                                        ToolTip="Look the game up on Steam and turn on the tags it suggests" AutomationProperties.Name="Add suggested tags"/>
+                            </Grid>
+                            <TextBlock Text="{Binding TagsMessage}" Style="{StaticResource CaptionText}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       Visibility="{Binding HasTagsMessage, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <ItemsControl ItemsSource="{Binding TagGroups}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel>
+                                        <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                                             <TextBlock Text="{Binding Name}" Style="{StaticResource CaptionText}" Margin="0,14,0,8"/>
                                             <ItemsControl ItemsSource="{Binding Tags}">
                                                 <ItemsControl.ItemsPanel>

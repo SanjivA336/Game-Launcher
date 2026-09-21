@@ -51,10 +51,22 @@ namespace Game_Launcher.ViewModels.Controls {
         }
     }
 
-    /// <summary> A titled row of tag chips, e.g. "Players": Single-player, Multiplayer, Co-op. </summary>
-    internal class TagGroupVM {
+    /// <summary> A titled row of tag chips, e.g. "Players": Solo, Co-op, Competitive. </summary>
+    internal class TagGroupVM : BaseVM {
         public string Name { get; }
         public IReadOnlyList<TagChipVM> Tags { get; }
+
+        private bool _isVisible = true;
+        /// <summary> False hides the whole row (the options page hides "Completion" until a game is marked as a Campaign game). </summary>
+        public bool IsVisible {
+            get => _isVisible;
+            set {
+                if (_isVisible != value) {
+                    _isVisible = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
 
         public TagGroupVM(string name, IReadOnlyList<TagChipVM> tags) {
             Name = name;

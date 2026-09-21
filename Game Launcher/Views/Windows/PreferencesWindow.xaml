@@ -19,8 +19,59 @@
         FontSize="14"
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
-        Width="540" Height="700"
-        MinHeight="400" MinWidth="420" MaxWidth="700">
+        Width="700" Height="780"
+        MinHeight="480" MinWidth="520" MaxWidth="900">
+
+    <Window.Resources>
+        <!-- One folder in a list: icon (a warning when the folder is missing), path, detail line, remove button -->
+        <DataTemplate x:Key="PathRowTemplate">
+            <Border Background="{StaticResource ControlFillBrush}" CornerRadius="{StaticResource ControlRadius}" Padding="12,8,6,8" Margin="0,2">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE8B7;"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                        <Setter Property="Text" Value="&#xE7BA;"/>
+                                        <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Path}"/>
+                        <TextBlock Text="{Binding Detail}" FontSize="12" TextTrimming="CharacterEllipsis">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding Detail}" Value="">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                    <Button Grid.Column="2" Style="{StaticResource SubtleButton}" Width="32" Height="32" Padding="0" Margin="8,0,0,0"
+                            Command="{Binding RemoveCommand}" ToolTip="Remove" AutomationProperties.Name="{Binding Path, StringFormat=Remove {0}}">
+                        <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="12"/>
+                    </Button>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" CornerRadius="0" GlassFrameThickness="-1" ResizeBorderThickness="6" UseAeroCaptionButtons="False"/>
@@ -57,33 +108,153 @@
                     <StackPanel Margin="28,26,28,16">
                         <TextBlock Text="Preferences" FontFamily="{StaticResource DisplayFont}" FontSize="32" FontWeight="SemiBold"/>
 
-                        <Border Style="{StaticResource Card}" Margin="0,22,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Scan folders" Style="{StaticResource SectionTitleText}"/>
-                                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
-                                           Text="Nexus looks for games in these folders. Editing them here isn't available yet; for now, change UserData/preferences.json."/>
-
-                                <ItemsControl ItemsSource="{Binding Roots}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Background="{StaticResource ControlFillBrush}" CornerRadius="{StaticResource ControlRadius}" Padding="12,9" Margin="0,2">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="&#xE8B7;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center"
-                                                               Foreground="{StaticResource TextTertiaryBrush}" Margin="0,0,10,0"/>
-                                                    <TextBlock Text="{Binding FullName}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                        <!-- Tabs -->
+                        <Border Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="3" Margin="0,20,0,0" HorizontalAlignment="Left">
+                            <StackPanel Orientation="Horizontal">
+                                <RadioButton Style="{StaticResource SegmentedButton}" GroupName="SettingsTab" Content="Library sources" MinWidth="140"
+                                             IsChecked="{Binding IsSourcesTab, Mode=TwoWay}" AutomationProperties.Name="Library sources tab"/>
+                                <RadioButton Style="{StaticResource SegmentedButton}" GroupName="SettingsTab" Content="Apps" MinWidth="90"
+                                             IsChecked="{Binding IsAppsTab, Mode=TwoWay}" AutomationProperties.Name="Apps tab"/>
+                                <RadioButton Style="{StaticResource SegmentedButton}" GroupName="SettingsTab" Content="General" MinWidth="110"
+                                             IsChecked="{Binding IsGeneralTab, Mode=TwoWay}" AutomationProperties.Name="General tab"/>
                             </StackPanel>
                         </Border>
+
+                        <!-- ================= Library sources ================= -->
+                        <StackPanel IsEnabled="{Binding CanEdit}"
+                                    Visibility="{Binding IsSourcesTab, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <StackPanel DataContext="{Binding Sources}" x:Name="SourcesPanel">
+
+                                <!-- Scan folders (folders can also be dropped onto this card) -->
+                                <Border Style="{StaticResource Card}" Margin="0,16,0,0" AllowDrop="True"
+                                        DragOver="Folders_DragOver" Drop="Roots_Drop">
+                                    <StackPanel>
+                                        <TextBlock Text="Scan folders" Style="{StaticResource SectionTitleText}"/>
+                                        <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                                   Text="Nexus looks for games in these folders. You can also drag a folder from Explorer onto this card. Changes apply when you press Save."/>
+
+                                        <ItemsControl ItemsSource="{Binding Roots}" ItemTemplate="{StaticResource PathRowTemplate}" AutomationProperties.Name="Scan folders list"/>
+
+                                        <TextBlock Text="No scan folders yet. Add one (or add your app libraries) so Nexus has somewhere to look."
+                                                   Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                                   Visibility="{Binding HasNoRoots, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                            <Button Command="{Binding AddRootCommand}" AutomationProperties.Name="Add folder">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="Add folder…" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding AddAppLibrariesCommand}" Margin="8,0,0,0" AutomationProperties.Name="Add app libraries">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="Add app libraries" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding ConfigureAppsCommand}" Style="{StaticResource SubtleButton}" Margin="8,0,0,0" AutomationProperties.Name="Configure apps">
+                                                <TextBlock Text="Configure apps" VerticalAlignment="Center" Foreground="{StaticResource AccentBrush}"/>
+                                            </Button>
+                                        </StackPanel>
+
+                                        <TextBlock Text="{Binding Notice}" TextWrapping="Wrap" Margin="0,12,0,0" Foreground="{StaticResource AccentBrush}"
+                                                   Visibility="{Binding HasNotice, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Excluded folders -->
+                                <Border Style="{StaticResource Card}" Margin="0,16,0,0" AllowDrop="True" DragOver="Folders_DragOver" Drop="Excludes_Drop">
+                                    <StackPanel>
+                                        <TextBlock Text="Excluded folders" Style="{StaticResource SectionTitleText}"/>
+                                        <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                                   Text="Nexus skips these folders and everything inside them, even when they sit inside a scan folder. Handy for launcher folders that aren't games."/>
+                                        <ItemsControl ItemsSource="{Binding Excludes}" ItemTemplate="{StaticResource PathRowTemplate}" AutomationProperties.Name="Excluded folders list"/>
+                                        <Button Command="{Binding AddExcludeCommand}" HorizontalAlignment="Left" Margin="0,8,0,0" AutomationProperties.Name="Add excluded folder">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <TextBlock Text="Exclude a folder…" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Ignore words -->
+                                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Ignore words" Style="{StaticResource SectionTitleText}"/>
+                                        <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                                   Text="Files and folders inside a game whose names contain one of these words are skipped (for example crash reporters, installers and redistributables), so they don't show up as games or launch options."/>
+                                        <ItemsControl ItemsSource="{Binding Keywords}" AutomationProperties.Name="Ignore words list">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="{StaticResource ControlFillBrush}" CornerRadius="14" Padding="12,2,2,2" Margin="0,0,8,8">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding Word}" VerticalAlignment="Center" FontSize="13"/>
+                                                            <Button Style="{StaticResource SubtleButton}" Width="24" Height="24" Padding="0" Margin="4,0,0,0"
+                                                                    Command="{Binding RemoveCommand}" ToolTip="Remove" AutomationProperties.Name="{Binding Word, StringFormat=Remove ignore word {0}}">
+                                                                <TextBlock Text="&#xE711;" FontFamily="{StaticResource IconFont}" FontSize="10"/>
+                                                            </Button>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0" KeyDown="Keyword_KeyDown">
+                                            <userControls:TextEntry Width="240" Placeholder="Add a word"
+                                                                    Input="{Binding NewKeyword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <Button Content="Add" Command="{Binding AddKeywordCommand}" Margin="8,0,0,0" MinWidth="70" AutomationProperties.Name="Add ignore word"/>
+                                            <Button Content="Reset to defaults" Command="{Binding ResetKeywordsCommand}" Margin="8,0,0,0" AutomationProperties.Name="Reset ignore words"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Why isn't my game found? -->
+                                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Why isn't my game found?" Style="{StaticResource SectionTitleText}"/>
+                                        <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                                   Text="Pick the game's folder and Nexus explains what stops it from showing up, using the settings above (including any changes you haven't saved yet)."/>
+                                        <Button Content="Check a game folder…" Command="{Binding WhyNotFoundCommand}" HorizontalAlignment="Left"
+                                                AutomationProperties.Name="Check a game folder"/>
+
+                                        <StackPanel Margin="0,14,0,0" Visibility="{Binding HasDiagnostic, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding DiagnosticTitle}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                            <ItemsControl ItemsSource="{Binding DiagnosticLines}" Margin="0,6,0,0" AutomationProperties.Name="Diagnostic result">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" TextWrapping="Wrap" Margin="0,2" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+
+                            <Button Content="Rescan now" Command="{Binding RescanCommand}" HorizontalAlignment="Left" Margin="0,16,0,0"
+                                    ToolTip="Saves your changes and looks for games again" AutomationProperties.Name="Rescan now"/>
+                        </StackPanel>
+
+                        <!-- ================= Apps (saved immediately, not staged) ================= -->
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAppsTab, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <userControls:AppsPanel DataContext="{Binding Apps}"/>
+                        </StackPanel>
+
+                        <!-- ================= General ================= -->
+                        <StackPanel IsEnabled="{Binding CanEdit}"
+                                    Visibility="{Binding IsGeneralTab, Converter={StaticResource BoolToVisibilityConverter}}">
 
                         <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                             <StackPanel>
                                 <TextBlock Text="Game names" Style="{StaticResource SectionTitleText}"/>
                                 <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,14"
-                                           Text="Turns folder-style names into readable ones. The characters - _ . become spaces, and a space is added before a capital that follows a lowercase letter and before a number that follows a letter (BelowZero becomes Below Zero, Titanfall2 becomes Titanfall 2). A website tag at the end, like -SomeSite.com, is removed."/>
+                                           Text="Turns folder-style names into readable ones."/>
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -121,6 +292,72 @@
                                 </Border>
 
                                 <TextBlock Text="{Binding CleanupStatus}" Margin="0,12,0,0" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
+                                <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                                    <ItemsControl ItemsSource="{Binding CleanupRenamed}" AutomationProperties.Name="Renamed games">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding}" FontSize="13" TextTrimming="CharacterEllipsis" Margin="0,2" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="0,16,0,0" DataContext="{Binding Tags}">
+                            <StackPanel>
+                                <TextBlock Text="Game tags" Style="{StaticResource SectionTitleText}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                    <Button Content="Add suggested tags to all games" Command="{Binding RunCommand}" AutomationProperties.Name="Add suggested tags to all games"/>
+                                    <Button Content="Cancel" Command="{Binding CancelCommand}" Margin="8,0,0,0" AutomationProperties.Name="Cancel tag lookup"
+                                            Visibility="{Binding IsRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding ProgressText}" Margin="0,12,0,0" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"
+                                           Visibility="{Binding HasProgress, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                <StackPanel Visibility="{Binding HasResults, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <StackPanel Visibility="{Binding HasUpdated, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding UpdatedTitle}" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                                        <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding Updated}" AutomationProperties.Name="Updated games">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="13" TextTrimming="CharacterEllipsis" Margin="0,2" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+
+                                    <StackPanel Visibility="{Binding HasNotFound, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding NotFoundTitle}" FontWeight="SemiBold" Margin="0,14,0,6"/>
+                                        <ScrollViewer MaxHeight="180" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding NotFound}" AutomationProperties.Name="Games not found on Steam">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="13" TextTrimming="CharacterEllipsis" Margin="0,2" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+
+                                    <StackPanel Visibility="{Binding HasFailed, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding FailedTitle}" FontWeight="SemiBold" Margin="0,14,0,6" Foreground="{StaticResource WarningBrush}"/>
+                                        <ScrollViewer MaxHeight="120" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding Failed}" AutomationProperties.Name="Games that could not be checked">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="13" TextTrimming="CharacterEllipsis" Margin="0,2" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </StackPanel>
+
+                                    <TextBlock Text="{Binding AlreadyHadText}" Style="{StaticResource CaptionText}" Margin="0,12,0,0"
+                                               Visibility="{Binding HasAlreadyHad, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
@@ -128,19 +365,91 @@
                             <StackPanel>
                                 <TextBlock Text="Cover art" Style="{StaticResource SectionTitleText}"/>
                                 <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
-                                           Text="Nexus downloads game covers from SteamGridDB using your free API key: sign in at steamgriddb.com, open your profile preferences, and copy the key from the API page. Game names are sent to SteamGridDB to find covers. Covers are saved next to Nexus, so it works offline afterwards."/>
+                                           Text="Covers come from Steam. A free SteamGridDB key lets you pick other covers, and fills in games Steam doesn't have."/>
                                 <userControls:TextEntry Placeholder="Paste your SteamGridDB API key"
                                                         Input="{Binding SteamGridDbApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                    <Button Content="Get a free key" Command="{Binding OpenKeyPageCommand}" AutomationProperties.Name="Get a free SteamGridDB key"/>
+                                    <Button Content="Test key" Command="{Binding TestKeyCommand}" Margin="8,0,0,0" AutomationProperties.Name="Test key"/>
+                                </StackPanel>
+                                <TextBlock Text="{Binding KeyStatus}" Margin="0,10,0,0" Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"
+                                           Visibility="{Binding HasKeyStatus, Converter={StaticResource BoolToVisibilityConverter}}"/>
                             </StackPanel>
                         </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Deals page" Style="{StaticResource SectionTitleText}"/>
+                                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,14"
+                                           Text="Shows current game discounts and free games. Turn it off to hide the page from the sidebar."/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Show the Deals page" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding DealsPageEnabled}"
+                                              VerticalAlignment="Center" AutomationProperties.Name="Show the Deals page"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Your data" Style="{StaticResource SectionTitleText}"/>
+                                <TextBlock Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,4,0,12"
+                                           Text="Your settings, game details and covers are saved in this folder. It is safe to copy it as a backup."/>
+                                <TextBox Text="{Binding DataFolderPath, Mode=OneWay}" IsReadOnly="True" FontSize="13" Padding="0,2"
+                                         Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" Margin="0,0,0,12"
+                                         AutomationProperties.Name="Data folder path"/>
+                                <Button HorizontalAlignment="Left" Command="{Binding OpenDataFolderCommand}" AutomationProperties.Name="Open data folder">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE838;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                        <TextBlock Text="Open folder" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
 
-                <!-- Action bar -->
+                <!-- Action bar. While/after a rescan it shows the progress and the summary instead of the Save buttons. -->
                 <Border Grid.Row="1" Margin="28,0" Padding="0,14,0,18" BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="0,1,0,0">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90"/>
-                        <Button Style="{StaticResource AccentButton}" Content="Save" Command="{Binding SaveCommand}" MinWidth="100" Margin="8,0,0,0"/>
+                    <StackPanel>
+                        <StackPanel Margin="0,0,0,12">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsScanning}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding ScanFinished}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
+                            <TextBlock Text="{Binding ScanSummary}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <ItemsControl ItemsSource="{Binding ScanErrors}" Margin="0,4,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}" FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource WarningBrush}" Margin="0,1"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding ShowSaveButtons, Converter={StaticResource BoolToVisibilityConverter}}">
+                                <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90" AutomationProperties.Name="Cancel"/>
+                                <Button Style="{StaticResource AccentButton}" Content="{Binding SaveLabel}" Command="{Binding SaveCommand}"
+                                        MinWidth="100" Padding="16,6" Margin="8,0,0,0" AutomationProperties.Name="Save"/>
+                            </StackPanel>
+                            <Button Style="{StaticResource AccentButton}" Content="Done" Command="{Binding CancelCommand}" MinWidth="100" AutomationProperties.Name="Done"
+                                    Visibility="{Binding ScanFinished, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
             </Grid>
