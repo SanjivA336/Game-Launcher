@@ -1,0 +1,353 @@
+<Page x:Class="Game_Launcher.Views.Pages.Deals"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:userControls="clr-namespace:Game_Launcher.Views"
+      xmlns:pages="clr-namespace:Game_Launcher.ViewModels.Pages"
+      d:DataContext="{d:DesignInstance Type=pages:DealsVM}"
+      mc:Ignorable="d"
+      d:DesignHeight="700" d:DesignWidth="960"
+      Foreground="{StaticResource TextPrimaryBrush}" FontFamily="{StaticResource BodyFont}" FontSize="14"
+      Title="Deals">
+
+    <Page.Resources>
+        <!-- Text coloured by how good the deal is: under 30% off, under 70% off, and everything above (free included) -->
+        <Style x:Key="GradeText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource DealLowBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Grade}" Value="Medium">
+                    <Setter Property="Foreground" Value="{StaticResource DealMediumBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Grade}" Value="High">
+                    <Setter Property="Foreground" Value="{StaticResource DealHighBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- The expiry date: grey normally, yellow within a week, red within a day -->
+        <Style x:Key="EndsText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextTertiaryBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Urgency}" Value="Soon">
+                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Urgency}" Value="Urgent">
+                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- A number in the page bar; the current page is filled with the accent colour -->
+        <Style x:Key="PageNumberButton" TargetType="Button" BasedOn="{StaticResource SubtleButton}">
+            <Setter Property="MinWidth" Value="34"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Padding" Value="8,0"/>
+            <Setter Property="Margin" Value="2,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentSubtleBrush}"/>
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </Page.Resources>
+
+    <Grid Margin="38,26,18,0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Heading -->
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Deals" FontFamily="{StaticResource DisplayFont}" FontSize="32" FontWeight="SemiBold"/>
+            <TextBlock Margin="0,2,0,0" Foreground="{StaticResource TextTertiaryBrush}" TextWrapping="Wrap" MaxWidth="700" HorizontalAlignment="Left"
+                       Text="Free games and discounts from Steam, Epic, GamerPower and CheapShark (prices in US dollars). Clicking a deal opens its web page."/>
+            <TextBlock Margin="0,6,0,0" Foreground="{StaticResource TextTertiaryBrush}" FontSize="12" TextWrapping="Wrap" MaxWidth="700" HorizontalAlignment="Left"
+                       AutomationProperties.Name="Deals disclaimer"
+                       Text="Nexus isn't affiliated with these sites and doesn't handle any purchases or payments; it only lists deals and links to the stores. Prices and availability come from them and can change, so check each store before you buy and decide for yourself whether to trust it."/>
+        </StackPanel>
+
+        <!-- Toolbar: search | sort | price | filters | refresh -->
+        <WrapPanel Grid.Row="1" Margin="0,16,10,0">
+            <userControls:TextEntry Width="250" Margin="0,0,10,8" Glyph="&#xE721;" Placeholder="Search deals"
+                                    Input="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,10,8">
+                <ComboBox Width="170" ItemsSource="{Binding SortOptions}" DisplayMemberPath="Label"
+                          SelectedItem="{Binding SelectedSort, Mode=TwoWay}" AutomationProperties.Name="Sort deals by"/>
+                <Button Width="36" Height="36" Padding="0" Margin="6,0,0,0" Command="{Binding ToggleSortDirectionCommand}"
+                        ToolTip="{Binding SortDirectionLabel}" AutomationProperties.Name="Deal sort direction">
+                    <TextBlock FontFamily="{StaticResource IconFont}" FontSize="14">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="&#xE74A;"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDescending}" Value="True">
+                                        <Setter Property="Text" Value="&#xE74B;"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Button>
+            </StackPanel>
+
+            <Border Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="3" Margin="0,0,10,8" Height="36">
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton Style="{StaticResource SegmentedButton}" GroupName="DealPrice" Content="All" MinWidth="56"
+                                 IsChecked="{Binding IsPriceAll, Mode=TwoWay}" AutomationProperties.Name="Show all deals"/>
+                    <RadioButton Style="{StaticResource SegmentedButton}" GroupName="DealPrice" Content="Only free" MinWidth="80"
+                                 IsChecked="{Binding IsPriceFree, Mode=TwoWay}" AutomationProperties.Name="Show only free games"/>
+                    <RadioButton Style="{StaticResource SegmentedButton}" GroupName="DealPrice" Content="Only paid" MinWidth="80"
+                                 IsChecked="{Binding IsPricePaid, Mode=TwoWay}" AutomationProperties.Name="Show only paid deals"/>
+                </StackPanel>
+            </Border>
+
+            <ToggleButton Style="{StaticResource FilterToggle}" Margin="0,0,10,8" IsChecked="{Binding IsFilterPanelOpen, Mode=TwoWay}"
+                          AutomationProperties.Name="Deal filters" ToolTip="Filter by store and more">
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE71C;" FontFamily="{StaticResource IconFont}" FontSize="14" VerticalAlignment="Center"/>
+                    <TextBlock Text="Filters" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                    <Border CornerRadius="9" MinWidth="18" Height="18" Margin="8,0,0,0" Background="{StaticResource AccentBrush}" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding ActiveFilterCount}" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextOnAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ActiveFilterCount}" Value="0">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                    </Border>
+                </StackPanel>
+            </ToggleButton>
+
+            <Button Width="36" Height="36" Padding="0" Margin="0,0,12,8" Command="{Binding RefreshCommand}" ToolTip="Refresh" AutomationProperties.Name="Refresh deals">
+                <TextBlock Text="&#xE72C;" FontFamily="{StaticResource IconFont}" FontSize="14"/>
+            </Button>
+            <TextBlock Text="{Binding StatusText}" Margin="0,0,0,8" Height="36" VerticalAlignment="Center" Foreground="{StaticResource TextTertiaryBrush}"
+                       TextAlignment="Left" Padding="0,8,0,0"/>
+        </WrapPanel>
+
+        <!-- Some sources missing -->
+        <TextBlock Grid.Row="2" Text="{Binding Note}" Margin="0,2,10,8" TextWrapping="Wrap" Foreground="{StaticResource WarningBrush}"
+                   Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+        <!-- Deals + filter panel -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer x:Name="CardsScroll" Grid.Column="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="0,0,10,24">
+
+                    <TextBlock Text="{Binding ResultsText}" Style="{StaticResource CaptionText}" Margin="2,0,0,10"/>
+
+                    <!-- Offline / nothing reachable -->
+                    <StackPanel HorizontalAlignment="Center" Margin="0,70,0,0" Visibility="{Binding IsOffline, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="&#xEB55;" FontFamily="{StaticResource IconFont}" FontSize="44" HorizontalAlignment="Center" Foreground="{StaticResource TextDisabledBrush}"/>
+                        <TextBlock Text="You're offline" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}" AutomationProperties.Name="Offline message"/>
+                        <TextBlock Text="Nexus couldn't reach the deal sites. Your library works as usual; deals will be here once you're back online."
+                                   HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="420" Margin="0,4,0,16" Foreground="{StaticResource TextTertiaryBrush}"/>
+                        <Button Content="Try again" Style="{StaticResource AccentButton}" HorizontalAlignment="Center" Padding="18,8"
+                                Command="{Binding RefreshCommand}" AutomationProperties.Name="Try again"/>
+                    </StackPanel>
+
+                    <!-- Nothing to show -->
+                    <StackPanel HorizontalAlignment="Center" Margin="0,70,0,0" Visibility="{Binding ShowEmpty, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="No deals to show" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"
+                                   AutomationProperties.Name="No deals message"/>
+                        <TextBlock Text="Try a different search or filter, or refresh in a while." HorizontalAlignment="Center" Margin="0,4,0,14" Foreground="{StaticResource TextTertiaryBrush}"/>
+                        <Button Content="Clear filters" HorizontalAlignment="Center" Command="{Binding ClearFiltersCommand}" AutomationProperties.Name="Clear deal filters"
+                                Visibility="{Binding EmptyBecauseOfFilters, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                    </StackPanel>
+
+                    <!-- The deals on this page -->
+                    <ItemsControl ItemsSource="{Binding Cards}" AutomationProperties.Name="Deals list">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource ChromelessButton}" Command="{Binding OpenCommand}" Width="300" Margin="0,0,18,18" VerticalAlignment="Top"
+                                        ToolTip="Open in your browser" AutomationProperties.Name="{Binding Title, StringFormat=Open deal: {0}}">
+                                    <Border CornerRadius="{StaticResource CardRadius}" BorderThickness="1" Background="{StaticResource CardBrush}" BorderBrush="{StaticResource CardStrokeBrush}">
+                                        <StackPanel>
+                                            <!-- Picture with badges -->
+                                            <Border Height="150" CornerRadius="7,7,0,0" Background="{Binding CoverBrush}">
+                                                <Grid>
+                                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,10,0,0">
+                                                        <Border Background="{StaticResource AccentBrush}" CornerRadius="10" Padding="9,2,9,3"
+                                                                Visibility="{Binding IsFree, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                            <TextBlock Text="FREE" FontSize="12" FontWeight="Bold" Foreground="{StaticResource TextOnAccentBrush}"/>
+                                                        </Border>
+                                                        <!-- The percent text is coloured by grade -->
+                                                        <Border Background="#D9000000" CornerRadius="10" Padding="9,2,9,3"
+                                                                Visibility="{Binding HasDiscount, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                            <TextBlock Text="{Binding DiscountText}" FontSize="12" FontWeight="Bold" Style="{StaticResource GradeText}"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <Border Background="#D9000000" CornerRadius="10" Padding="9,2,9,3" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,10,0"
+                                                            Visibility="{Binding InLibrary, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                        <TextBlock Text="In your library" FontSize="12" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                    </Border>
+                                                </Grid>
+                                            </Border>
+
+                                            <StackPanel Margin="14,11,14,13">
+                                                <TextBlock Text="{Binding Title}" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}"/>
+
+                                                <!-- Old price struck through, then the new price (coloured by grade) -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                    <TextBlock Text="{Binding OriginalPriceText}" Foreground="{StaticResource TextTertiaryBrush}" TextDecorations="Strikethrough" Margin="0,0,8,0"
+                                                               Visibility="{Binding HasOriginalPrice, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                    <TextBlock Text="{Binding CurrentPriceText}" FontWeight="SemiBold" Style="{StaticResource GradeText}"/>
+                                                </StackPanel>
+
+                                                <!-- When it ends -->
+                                                <TextBlock Text="{Binding EndsText}" FontSize="12" Margin="0,3,0,0" Style="{StaticResource EndsText}"/>
+
+                                                <!-- Where it's on offer: the store's own logo, or a letter badge when it has none -->
+                                                <StackPanel Orientation="Horizontal" Margin="0,9,0,0">
+                                                    <Grid Width="18" Height="18" Margin="0,0,8,0">
+                                                        <Border CornerRadius="9" Background="{Binding BadgeBrush}">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding HasLogo}" Value="True">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                            <TextBlock Text="{Binding Initial}" FontSize="11" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Border>
+                                                        <Image Source="{Binding Logo}" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                                    </Grid>
+                                                    <TextBlock Text="{Binding ProviderName}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                                    <TextBlock Text="{Binding Note}" FontSize="12" Margin="6,0,0,0" Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                                <TextBlock Text="{Binding AlsoOnText}" FontSize="12" Margin="0,5,0,0" Foreground="{StaticResource TextTertiaryBrush}" TextTrimming="CharacterEllipsis"
+                                                           Visibility="{Binding HasAlsoOn, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- Page bar -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ShowEmpty}" Value="False">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <TextBlock Text="Deals per page" Style="{StaticResource CaptionText}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <ComboBox Width="76" ItemsSource="{Binding PageSizes}" SelectedItem="{Binding PageSize, Mode=TwoWay}" AutomationProperties.Name="Deals per page"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Visibility="{Binding HasPages, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Button Style="{StaticResource SubtleButton}" Width="34" Height="34" Padding="0" Command="{Binding PreviousPageCommand}"
+                                    ToolTip="Previous page" AutomationProperties.Name="Previous page">
+                                <TextBlock Text="&#xE76B;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
+                            </Button>
+                            <ItemsControl ItemsSource="{Binding PageButtons}" AutomationProperties.Name="Page numbers">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Content="{Binding Label}" Style="{StaticResource PageNumberButton}" Command="{Binding GoCommand}"
+                                                AutomationProperties.Name="{Binding Label, StringFormat=Page {0}}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Button Style="{StaticResource SubtleButton}" Width="34" Height="34" Padding="0" Command="{Binding NextPageCommand}"
+                                    ToolTip="Next page" AutomationProperties.Name="Next page">
+                                <TextBlock Text="&#xE76C;" FontFamily="{StaticResource IconFont}" FontSize="13"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Filter panel (opened by the Filters button) -->
+            <Border Grid.Column="1" Style="{StaticResource Card}" Width="300" Margin="6,0,10,14"
+                    Visibility="{Binding IsFilterPanelOpen, Converter={StaticResource BoolToVisibilityConverter}}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,6,0">
+                        <Grid>
+                            <TextBlock Text="Filters" Style="{StaticResource SectionTitleText}" VerticalAlignment="Center"/>
+                            <Button Content="Clear all" Style="{StaticResource SubtleButton}" FontSize="12" Padding="10,4" HorizontalAlignment="Right"
+                                    Command="{Binding ClearFiltersCommand}" AutomationProperties.Name="Clear all deal filters"/>
+                        </Grid>
+
+                        <!-- Stores -->
+                        <TextBlock Text="Stores" Style="{StaticResource CaptionText}" Margin="0,16,0,8"/>
+                        <Border Background="{StaticResource ControlFillBrush}" CornerRadius="6" Padding="3">
+                            <UniformGrid Columns="2">
+                                <RadioButton Style="{StaticResource SegmentedButton}" GroupName="StoreMatch" Content="All selected"
+                                             IsChecked="{Binding MatchAllProviders, Mode=TwoWay}" AutomationProperties.Name="Match all selected stores"/>
+                                <RadioButton Style="{StaticResource SegmentedButton}" GroupName="StoreMatch" Content="Any selected"
+                                             IsChecked="{Binding MatchAnyProvider, Mode=TwoWay}" AutomationProperties.Name="Match any selected store"/>
+                            </UniformGrid>
+                        </Border>
+                        <TextBlock Text="{Binding ProviderModeHint}" Style="{StaticResource CaptionText}" TextWrapping="Wrap" Margin="0,8,0,10"/>
+                        <ItemsControl ItemsSource="{Binding ProviderChips}" AutomationProperties.Name="Store filters">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <ToggleButton Style="{StaticResource TagChip}" Margin="0,0,8,8" IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                                  AutomationProperties.Name="{Binding Name, StringFormat=Store: {0}}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}"/>
+                                            <TextBlock Text="{Binding Games}" Margin="7,0,0,0" Opacity="0.6"/>
+                                        </StackPanel>
+                                    </ToggleButton>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Hide owned -->
+                        <Grid Margin="0,18,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Hide games I already own" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,10,0"/>
+                            <CheckBox Grid.Column="1" Style="{StaticResource ToggleSwitch}" IsChecked="{Binding HideOwned}" VerticalAlignment="Center"
+                                      AutomationProperties.Name="Hide games I already own"/>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</Page>
