@@ -6,8 +6,16 @@ Nexus scans the folders you point it at, works out which folders are games and w
 and shows everything as a single cover-art library. There is no account, no sign-in and no store client:
 it opens in about a second and works with no internet connection.
 
-> **Status:** early development. It is usable day to day, but it is a young project with rough edges (see
+> **Version 1.0.** It is usable day to day, but it is a young project with rough edges (see
 > [Limitations](#limitations)). Windows only.
+
+## Download
+
+**[Download Nexus for Windows](https://github.com/SanjivA336/Game-Launcher/releases/latest/download/Nexus-Launcher.exe)**
+(one file, about 70 MB). Save it anywhere and double-click it. There is nothing to install and no .NET to set up.
+
+Because the file isn't code-signed, Windows may say "Windows protected your PC". Choose **More info**, then **Run
+anyway**. If you'd rather not trust a downloaded exe, you can [build it yourself](#get-it-running) from the source.
 
 **Jump to:** [Part 1: What is Nexus](#part-1-what-is-nexus) | [Part 2: Using Nexus](#part-2-using-nexus)
 
@@ -147,7 +155,7 @@ Nexus is early, so please know what you're getting:
   shows the deals from the sources that still answer), prices are US dollars only, and Nexus doesn't check that a
   deal is available in your country.
 - The startup scan runs on the main thread, so a huge library may make the window pause for a moment.
-- There is no installer or prebuilt download yet: you build it from source (it's one command).
+- There is no installer: Nexus is one portable `.exe`. It isn't code-signed, so Windows may show a warning the first time.
 - There is no test project in the repository yet.
 
 ## Roadmap
@@ -155,7 +163,6 @@ Nexus is early, so please know what you're getting:
 - A page to manage the library (unhide, fix names in bulk)
 - Custom tags, and a place to browse and manage mods
 - Playtime tracking
-- Packaged releases
 
 ## How it's built
 
@@ -229,12 +236,16 @@ and a switch in Settings, the way the Deals page does it.
 ## What you need
 
 - **Windows 11**, 64-bit (Windows 10 should run it, with plainer window effects, but hasn't been tested)
-- To build it: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- To run a built copy on another PC: the [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0)
+- To run the download: nothing else. It already contains everything it needs.
+- To build it yourself: the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
 ## Get it running
 
-Clone the repository, then use whichever you like.
+**The easy way:** use the [download](#download) at the top, or the newest file on the
+[Releases page](https://github.com/SanjivA336/Game-Launcher/releases). To update, download the new file and replace the
+old one; your library isn't stored next to the exe, so nothing is lost.
+
+**Building it yourself:** clone the repository, then use whichever you like.
 
 **Visual Studio 2022:** open `Game Launcher.sln` and press F5.
 
@@ -247,15 +258,21 @@ and build settings).
 dotnet run --project "Game Launcher/Game Launcher.csproj"
 ```
 
-**A standalone `.exe`** you can copy anywhere:
+**A standalone `.exe`** you can copy anywhere (the same kind of file as the download):
 
 ```
-dotnet publish "Game Launcher/Game Launcher.csproj" -c Release -r win-x64 --self-contained false -p:PublishSingleFile=true -o publish
+dotnet publish "Game Launcher/Game Launcher.csproj" -p:PublishProfile=win-x64
 ```
 
-This produces `publish\Game Launcher.exe` (a small single file; the PC running it needs the .NET 8 Desktop
-Runtime). Your library is **not** stored next to the exe, so you can move, rebuild or delete the exe without
-losing anything (see [Where your data lives](#where-your-data-lives)).
+This produces `Game Launcher/bin/publish/Game Launcher.exe`: one file of about 70 MB that includes .NET itself, so the
+PC running it needs nothing installed. (A smaller build that needs the .NET 8 Desktop Runtime on the PC is possible
+by setting `SelfContained` to `false` in `Game Launcher/Properties/PublishProfiles/win-x64.pubxml`.) Your library is
+**not** stored next to the exe, so you can move, rebuild or delete the exe without losing anything (see
+[Where your data lives](#where-your-data-lives)).
+
+**Making a release** (for the maintainer): raise `Version` in `Game Launcher/Game Launcher.csproj`, run the publish
+command above, then create a GitHub release and attach the exe as `Nexus-Launcher.exe`. The Download link at the top
+always points at the newest release's file of that name.
 
 ## First run: tell Nexus where your games are
 
@@ -494,6 +511,7 @@ Everything Nexus saves is in one folder:
 | `mappings.json` | Your games: names, executables, tags, play history, cover details |
 | `apps.json` | The Apps tab: your linked launchers and custom apps |
 | `Covers/` | Downloaded and uploaded cover images |
+| `crash.log` | Only exists if something unexpected went wrong: the details, so a problem can be described or reported |
 
 It is per-user (not next to the exe), so moving, rebuilding or deleting the exe never loses your library. It is
 "Local" rather than "Roaming" because it contains folder paths that only make sense on this PC.
@@ -540,9 +558,14 @@ the site is down or has changed). Press the refresh button later; your library i
 **A launcher shows as "Not found" on the Apps tab.** Press **Browse...** on its row and choose its `.exe` or its Start
 Menu shortcut. A launcher that isn't in the list at all can be linked with **Add custom app...**.
 
-**No covers appear.** Check that you saved an API key in Settings, and that the game was added or renamed
-*after* the key was saved (lookups only happen then). Open the game and use **Change cover...** to search for one
-yourself. A message under the game count explains API or connection problems.
+**No covers appear.** Covers come from Steam and are looked up only when a game is added, renamed or reset, and only
+while you are online. Steam doesn't have a portrait for every game: for those, add a free SteamGridDB key in Settings
+(it fills in the gaps), or open the game and use **Change cover...** to pick or upload one yourself. A message under the
+game count explains connection problems.
+
+**Something went wrong and a message appeared.** Nexus keeps going and saved the details to `crash.log` in its data
+folder (see [Where your data lives](#where-your-data-lives)). Your games and settings are safe: they are saved in a way
+that a crash can't half-write.
 
 **The `.exe` icon looks old.** Windows caches icons; restarting Explorer refreshes it.
 
