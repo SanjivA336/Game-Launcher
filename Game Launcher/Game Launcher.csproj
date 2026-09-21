@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,6 +9,12 @@
     <UseWPF>true</UseWPF>
     <!-- The icon Windows shows for Game Launcher.exe (Explorer, taskbar, Alt+Tab). It must be an .ico file. -->
     <ApplicationIcon>Resources\Branding\nexus.ico</ApplicationIcon>
+    <!-- Shown in the exe's Properties > Details tab. Change Version for each release. -->
+    <Version>1.0.0</Version>
+    <Product>Nexus Launcher</Product>
+    <AssemblyTitle>Nexus Launcher</AssemblyTitle>
+    <Description>A nicer way to store and launch your game shortcuts</Description>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,12 +24,6 @@
 
     <!-- The source artwork: kept in the project (Tools\Generate-Icons.ps1 builds the files above from it) but not shipped -->
     <None Include="Resources\Branding\*.svg" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Include="Resources\Images\placeholder.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
 
   <ItemGroup>
