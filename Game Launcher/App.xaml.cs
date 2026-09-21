@@ -13,6 +13,17 @@ namespace Game_Launcher
             // is copied to the new per-user folder once.
             AppPaths.MigrateLegacyDataIfNeeded();
 
+            // A safety net: an unexpected error is written to crash.log and shown in plain words, instead of the app vanishing.
+            // (Everything is saved with write-then-swap, so an error never leaves a half-written data file behind.)
+            DispatcherUnhandledException += (_, args) => {
+                CrashLog.Write(args.Exception);
+                MessageBox.Show($"Something went wrong: {args.Exception.Message}\n\nDetails were saved to:\n{CrashLog.FilePath}",
+                    "Nexus", MessageBoxButton.OK, MessageBoxImage.Warning);
+                args.Handled = true; // keep going: most errors are one action failing, not the whole app
+            };
+            AppDomain.CurrentDomain.UnhandledException += (_, args) => CrashLog.Write(args.ExceptionObject as Exception);
+            TaskScheduler.UnobservedTaskException += (_, args) => { CrashLog.Write(args.Exception); args.SetObserved(); };
+
             base.OnStartup(e);
         }
     }
