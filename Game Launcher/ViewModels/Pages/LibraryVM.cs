@@ -126,6 +126,18 @@ namespace Game_Launcher.ViewModels.Pages {
             }
         }
 
+        private string _emptyTitle = "No games to show";
+        private string _emptyHint = "Try a different search or clear your filters.";
+        /// <summary> What the empty grid says: a brand-new library needs a folder added, while an empty result just needs different filters. </summary>
+        public string EmptyTitle {
+            get => _emptyTitle;
+            private set { if (_emptyTitle != value) { _emptyTitle = value; OnPropertyChanged(); } }
+        }
+        public string EmptyHint {
+            get => _emptyHint;
+            private set { if (_emptyHint != value) { _emptyHint = value; OnPropertyChanged(); } }
+        }
+
         #region Cover art downloads
         private bool _coverDownloadRunning;
 
@@ -251,6 +263,10 @@ namespace Game_Launcher.ViewModels.Pages {
             int libraryTotal = all.Count(g => !g.HasTag(TagCatalog.Hidden));
             bool filtering = !string.IsNullOrWhiteSpace(SearchText) || selectedTags.Count > 0;
             CountText = filtering ? $"{games.Count} of {libraryTotal} games" : $"{games.Count} games";
+
+            bool libraryIsEmpty = all.Count == 0;
+            EmptyTitle = libraryIsEmpty ? "No games yet" : "No games to show";
+            EmptyHint = libraryIsEmpty ? "Add a folder in Settings and Nexus will find your games." : "Try a different search or clear your filters.";
 
             // Handle errors, e.g., show a message box or log them
             foreach (var error in errors) {

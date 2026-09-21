@@ -119,9 +119,9 @@
                     </StackPanel.Style>
                     <TextBlock Text="&#xE7FC;" FontFamily="{StaticResource IconFont}" FontSize="44" HorizontalAlignment="Center"
                                Foreground="{StaticResource TextDisabledBrush}"/>
-                    <TextBlock Text="No games to show" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"
+                    <TextBlock Text="{Binding EmptyTitle}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,12,0,0"
                                Foreground="{StaticResource TextSecondaryBrush}"/>
-                    <TextBlock Text="Try a different search or clear your filters." HorizontalAlignment="Center" Margin="0,4,0,0"
+                    <TextBlock Text="{Binding EmptyHint}" HorizontalAlignment="Center" Margin="0,4,0,0"
                                Foreground="{StaticResource TextTertiaryBrush}"/>
                 </StackPanel>
             </Grid>
