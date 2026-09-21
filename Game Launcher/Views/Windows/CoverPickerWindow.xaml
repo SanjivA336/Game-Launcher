@@ -289,7 +289,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,16,0"
                                    Foreground="{StaticResource AccentBrush}"/>
-                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90"/>
+                        <Button Grid.Column="1" Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90" IsCancel="True"/>
                         <Button Grid.Column="2" Style="{StaticResource AccentButton}" Content="Use this cover" Command="{Binding ApplyCommand}"
                                 MinWidth="130" Margin="8,0,0,0" AutomationProperties.Name="Use this cover"/>
                     </Grid>

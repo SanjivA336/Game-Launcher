@@ -443,7 +443,7 @@
 
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <StackPanel Orientation="Horizontal" Visibility="{Binding ShowSaveButtons, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90" AutomationProperties.Name="Cancel"/>
+                                <Button Content="Cancel" Command="{Binding CancelCommand}" MinWidth="90" IsCancel="True" AutomationProperties.Name="Cancel"/>
                                 <Button Style="{StaticResource AccentButton}" Content="{Binding SaveLabel}" Command="{Binding SaveCommand}"
                                         MinWidth="100" Padding="16,6" Margin="8,0,0,0" AutomationProperties.Name="Save"/>
                             </StackPanel>

@@ -19,7 +19,7 @@
         UseLayoutRounding="True"
         SnapsToDevicePixels="True"
         Width="1320" Height="800"
-        MinHeight="700" MinWidth="1200">
+        MinHeight="600" MinWidth="1000">
 
     <!-- Removes the default Windows title bar but keeps resizing, shadow and rounded corners.
          GlassFrameThickness=-1 lets the Mica backdrop show through the whole window. -->
