@@ -86,10 +86,8 @@ namespace Game_Launcher.Services {
         public static ScanResult ScanGames(List<string>? errors = null, Preferences? prefs = null, Func<IReadOnlyList<LauncherInstall>>? installsProvider = null) {
             errors ??= new List<string>();
 
-            // Get saved game mappings
-            var mappings = GameMappingManager.LoadMappings();
-            var mappingDict = mappings.Where(m => m.DirPath != null).ToDictionary(m => m.DirPath!.FullName, m => m, StringComparer.OrdinalIgnoreCase);
-            int newGames = 0;
+            // The slow parts (walking the disk, reading the launchers' records) come BEFORE the saved games are loaded. Loading first
+            // would mean saving an older copy over anything that changed meanwhile (a cover that finished downloading, tags, a launch).
 
             // Find all game executables (with the given settings, or the saved ones)
             prefs ??= Preferences.Load();
@@ -98,6 +96,17 @@ namespace Game_Launcher.Services {
 
             // Group executables by game
             var groups = executables.GroupBy(f => f.Directory?.FullName ?? "Unknown").ToList();
+
+            // Which launcher each game came from, from the launchers' own install records
+            var installs = (installsProvider ?? LauncherLibraries.InstallsOnThisPc)();
+
+            // From here to the save is quick, and no other change to the saved games can slip in between
+            using var _ = Locked();
+
+            // Get saved game mappings
+            var mappings = GameMappingManager.LoadMappings();
+            var mappingDict = mappings.Where(m => m.DirPath != null).ToDictionary(m => m.DirPath!.FullName, m => m, StringComparer.OrdinalIgnoreCase);
+            int newGames = 0;
 
             // Add games that don't show up in the mappings
             foreach (var group in groups) {
@@ -123,9 +132,6 @@ namespace Game_Launcher.Services {
                     newGames++;
                 }
             }
-
-            // Which launcher each game came from, from the launchers' own install records
-            var installs = (installsProvider ?? LauncherLibraries.InstallsOnThisPc)();
 
             // Update the IsInstalled property for each mapping
             foreach (var mapping in mappings) {
@@ -299,6 +305,20 @@ namespace Game_Launcher.Services {
         #endregion
 
         #region JSON Serialization
+        // Every "load the games, change one, save them all" method holds this lock for its whole run, so two of them (say a cover that
+        // finished downloading and a rescan started from Settings) can't each load the same old copy and then overwrite each other.
+        // A lock can be taken again by the thread that already holds it, so these methods can call one another.
+        private static readonly object Gate = new();
+
+        private static IDisposable Locked() {
+            Monitor.Enter(Gate);
+            return new GateRelease();
+        }
+
+        private sealed class GateRelease : IDisposable {
+            public void Dispose() => Monitor.Exit(Gate);
+        }
+
         /// <summary> Saves the game mappings to a JSON file. </summary>
         /// <param name="mappings"> The list of game mappings to save.</param>
         public static void SaveMappings(List<GameMapping> mappings) {
@@ -361,6 +381,7 @@ namespace Game_Launcher.Services {
             mapping.ExecutablesRaw = mapping.ExecutablesRaw.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
             // Load existing mappings
+            using var _ = Locked();
             var mappings = LoadMappings();
 
             // Check if the mapping already exists in the list
@@ -413,6 +434,7 @@ namespace Game_Launcher.Services {
             }
 
             // Load existing mappings
+            using var _ = Locked();
             var mappings = LoadMappings();
 
             // Check if the mapping already exists in the list
@@ -458,6 +480,7 @@ namespace Game_Launcher.Services {
             // (No directory-exists check on purpose: editing a game's name/tags must work even when its drive is unplugged)
 
             // Load existing mappings
+            using var _ = Locked();
             var mappings = LoadMappings();
 
             // Find the existing mapping
@@ -472,6 +495,8 @@ namespace Game_Launcher.Services {
             mapping.CoverPath = existingMapping.CoverPath;
             mapping.CoverMatchedName = existingMapping.CoverMatchedName;
             mapping.CoverIsCustom = existingMapping.CoverIsCustom;
+            mapping.CoverSource = existingMapping.CoverSource;
+            mapping.Source = existingMapping.Source; // set by scans only; the options page's copy may be older
 
             // ...except for "should this game be looked up again?": yes if it was renamed, or reset (Reset marks the copy as pending).
             // A game with a cover the user chose is never looked up.
@@ -542,6 +567,7 @@ namespace Game_Launcher.Services {
         public static bool Repoint(string oldDirPath, string pickedFolder, out GameMapping? updated, out string? error) {
             updated = null;
 
+            using var _ = Locked();
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => oldDirPath.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -605,6 +631,7 @@ namespace Game_Launcher.Services {
         /// </summary>
         /// <returns> The tags that were actually new for the game (empty when it had them all, or when it is no longer in the library).</returns>
         public static IReadOnlyList<string> AddTags(string dirPathRaw, IEnumerable<string> tags) {
+            using var _ = Locked();
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -626,6 +653,7 @@ namespace Game_Launcher.Services {
         public static bool RecordLaunch(GameMapping game, out string? error) {
             error = null;
 
+            using var _ = Locked();
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => game.DirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -652,6 +680,7 @@ namespace Game_Launcher.Services {
         /// <returns> The saved game, or null if it is no longer in the library.</returns>
         /// <param name="coverSource"> Where the cover came from ("Steam" or "SteamGridDB").</param>
         public static GameMapping? SetCover(string dirPathRaw, string? coverFileName, string? matchedName, string? coverSource = null) {
+            using var _ = Locked();
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -673,6 +702,7 @@ namespace Game_Launcher.Services {
         /// <summary> One-time tidy-up: covers saved by an earlier version were named only by a fingerprint ("93bbc17ef8ec.png"). Renames them to the current style. </summary>
         /// <returns> How many cover files were renamed (0 once everything is tidy, so it is cheap to call at every start).</returns>
         public static int MigrateLegacyCoverNames() {
+            using var _ = Locked();
             var mappings = LoadMappings();
             int moved = 0;
 
@@ -708,6 +738,7 @@ namespace Game_Launcher.Services {
         /// <param name="sourceTitle"> The SteamGridDB title it was chosen from, or null if it is the user's own image.</param>
         /// <returns> The saved game, or null if it is no longer in the library.</returns>
         public static GameMapping? SetCustomCover(string dirPathRaw, string coverFileName, string? sourceTitle) {
+            using var _ = Locked();
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -726,6 +757,7 @@ namespace Game_Launcher.Services {
         /// <summary> Gives up a custom cover: its file is deleted and the game gets an automatic cover lookup again. </summary>
         /// <returns> The saved game, or null if it is no longer in the library.</returns>
         public static GameMapping? UseAutomaticCover(string dirPathRaw) {
+            using var _ = Locked();
             var mappings = LoadMappings();
             var stored = mappings.FirstOrDefault(m => dirPathRaw.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase));
             if (stored is null) {
@@ -757,6 +789,7 @@ namespace Game_Launcher.Services {
         /// <summary> Cleans every existing game name. Covers are left alone: cleaning doesn't change which game a name means, and automatic lookups already clean names before searching. </summary>
         /// <returns> How many names changed.</returns>
         public static int CleanUpAllNames() {
+            using var _ = Locked();
             var mappings = LoadMappings();
             int changed = 0;
 
