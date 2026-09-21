@@ -24,6 +24,8 @@ namespace Game_Launcher
             AppDomain.CurrentDomain.UnhandledException += (_, args) => CrashLog.Write(args.ExceptionObject as Exception);
             TaskScheduler.UnobservedTaskException += (_, args) => { CrashLog.Write(args.Exception); args.SetObserved(); };
 
+            ScrollForwarding.Register(); // the mouse wheel scrolls the page from anywhere (see the class for why this is needed)
+
             base.OnStartup(e);
         }
     }
