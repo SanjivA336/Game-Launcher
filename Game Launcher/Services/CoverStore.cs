@@ -103,6 +103,32 @@ namespace Game_Launcher.Services {
             return found.Name is null ? null : (found.Name, found.Match.Groups[1].Value.Equals("custom", StringComparison.OrdinalIgnoreCase));
         }
 
+        /// <summary>
+        /// Moves a game's cover to the file name it needs after the game's folder changed (the name contains a fingerprint of the folder,
+        /// so the old file would otherwise be orphaned and the game would look like it has no cover).
+        /// </summary>
+        /// <param name="oldDirPath"> The folder the game used to be in.</param>
+        /// <param name="game"> The game, already updated to its new folder and executables.</param>
+        /// <returns> The cover's new file name, or null if the game had no cover file.</returns>
+        public static string? MoveForNewFolder(string oldDirPath, GameMapping game) {
+            var existing = FindExisting(oldDirPath);
+            if (existing is null) {
+                return null;
+            }
+
+            string newName = FileNameFor(game, Path.GetExtension(existing.Value.FileName), existing.Value.IsCustom);
+            string from = CoverArt.FullPath(existing.Value.FileName);
+            string to = CoverArt.FullPath(newName);
+
+            if (!from.Equals(to, StringComparison.OrdinalIgnoreCase)) {
+                File.Move(from, to, overwrite: true); // this game's own cover wins over anything left behind for the new folder
+            }
+
+            RemoveAllExcept(oldDirPath, keepFileName: null);   // leftovers under the old fingerprint
+            RemoveAllExcept(game.DirPathRaw, newName);          // leftovers under the new one
+            return newName;
+        }
+
         /// <summary> Copies a user's image in as the game's custom cover: any common image format, resized down if huge, stored as PNG. The original file is only read. </summary>
         /// <exception cref="InvalidOperationException"> The file couldn't be read as an image.</exception>
         public static async Task<string> ImportAsync(GameMapping game, string sourcePath, CancellationToken ct = default) {

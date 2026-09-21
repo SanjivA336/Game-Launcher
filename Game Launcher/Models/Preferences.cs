@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using Game_Launcher.Helpers;
+using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -6,7 +7,7 @@ using System.Text.Json.Serialization;
 namespace Game_Launcher.Models {
     public class Preferences {
 
-        private static readonly string PreferencesPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData", "preferences.json");
+        private static readonly string PreferencesPath = AppPaths.PreferencesFile;
 
         private static readonly HashSet<string> DefaultIgnores = new HashSet<string> {
                 "redist",
@@ -88,8 +89,16 @@ namespace Game_Launcher.Models {
         /// <summary> When on, games found from now on get a cleaned-up name ("Core_Keeper" becomes "Core Keeper"). Existing games are only changed by the "clean up all names" button. </summary>
         public bool CleanNewGameNames { get; set; } = true;
 
+        /// <summary> Whether the Deals page shows up in the sidebar. It only contacts the deal sites while that page is open. </summary>
+        public bool DealsPageEnabled { get; set; } = true;
+
         /// <summary> Personal key for the SteamGridDB API (used to download cover art). Stays in this local file; never commit it. </summary>
         public string SteamGridDbApiKey { get; set; } = string.Empty;
+
+        /// <summary> An independent copy, so settings can be edited (or scanned with) without touching the saved ones. </summary>
+        public Preferences Clone() {
+            return JsonSerializer.Deserialize<Preferences>(JsonSerializer.Serialize(this)) ?? new Preferences();
+        }
 
         #region JSON Serialization
         /// <summary> Loads the user preferences from a JSON file. </summary>

@@ -7,7 +7,7 @@ namespace Game_Launcher.Helpers {
     public static class CoverArt {
 
         /// <summary> Downloaded covers live here. These are Nexus's own files (next to mappings.json), never inside a game's folder. </summary>
-        public static string CoversDirectory => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UserData", "Covers");
+        public static string CoversDirectory => AppPaths.CoversDirectory;
 
         /// <summary> Full path of a cover file. Only the file NAME of the input is used, so a doctored mappings.json can't point outside the covers folder. </summary>
         public static string FullPath(string fileName) => Path.Combine(CoversDirectory, Path.GetFileName(fileName));
