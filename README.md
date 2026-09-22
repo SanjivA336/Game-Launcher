@@ -459,8 +459,8 @@ Tags are grouped so the filter panel stays readable:
 | Completion | In Progress, Finished (only shown for Campaign games) | You. Launching a Campaign game marks it In Progress. Pick one |
 | Connection | Online, Offline (includes local play) | You or Steam. A game can have both |
 | Players | Solo, Co-op, Competitive, MMO, Party, Local | You or Steam |
-| Structure | Campaign, Roguelike, Open world, Sandbox, Survival | You |
-| Genre | Action, Adventure, RPG, Strategy, Simulation, Racing, Sports, Shooter, Puzzle, Platformer, Horror | You or Steam |
+| Structure | Campaign, Roguelike, Open world, Sandbox | You |
+| Genre | Action, Adventure, RPG, Strategy, Simulation, Survival, Racing, Sports, Shooter, Puzzle, Platformer, Horror | You or Steam |
 | Features | Controller, VR | You or Steam |
 
 Older tags are carried over (Single-player becomes Solo, Multiplayer becomes Online).

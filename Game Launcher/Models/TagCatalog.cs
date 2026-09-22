@@ -63,7 +63,6 @@ namespace Game_Launcher.Models {
             new("Roguelike", "Structure", "Played in repeated runs", true),
             new("Open world", "Structure", "A large world to explore freely", true),
             new("Sandbox", "Structure", "Build and experiment with few rules", true),
-            new("Survival", "Structure", "Gather, craft and stay alive", true),
 
             // Genre
             new("Action", "Genre", "Fast-paced, action-focused", true),
@@ -71,6 +70,7 @@ namespace Game_Launcher.Models {
             new("RPG", "Genre", "Role-playing", true),
             new("Strategy", "Genre", "Planning and tactics", true),
             new("Simulation", "Genre", "Simulates a real activity", true),
+            new("Survival", "Genre", "Gather, craft and stay alive", true),
             new("Racing", "Genre", "Driving and racing", true),
             new("Sports", "Genre", "Sports games", true),
             new("Shooter", "Genre", "Gun-based combat", true),
