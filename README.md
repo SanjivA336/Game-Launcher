@@ -39,82 +39,17 @@ pattern, so the code is written to be read.
 
 ## What it can do
 
-**Home**
-- The start page. **Continue playing** shows your most recently launched games in one row (as many as fit the
-  window), ending with a **See all your games** card that opens the Library
-- **Pick something for me** chooses an installed game at random, with its own filters and an optional lean towards
-  games you play more (or less) often
-- Click the Nexus logo in the sidebar to get back to it from anywhere
+- **Home** — your most recently played games in one row, plus **Pick something for me** for when you can't decide
+- **Library** — finds games by scanning the folders you point it at, with search, sorting, and tags you can filter
+  by (grouped by status, source launcher, players, genre and more; Steam can suggest most of them for you)
+- **Each game** — rename it, choose its executable, edit its tags, open its folder, or hide it (there's no delete)
+- **Apps** — link your other game launchers so they're one click away, Discord-connections style
+- **Deals** — free games and discounts from Steam, Epic, GamerPower and CheapShark, on by default and one switch to turn off
+- **Covers** — fetched automatically from Steam; a free SteamGridDB key adds a picker and fills in the rest
+- **Names** — cleans up folder-style names automatically (`Core_Keeper` becomes `Core Keeper`)
+- **The app itself** — a Windows 11 style dark interface; a fork can add its own page with one class file
 
-**Library**
-- Finds games automatically by scanning folders you choose (edited right in Settings), ignoring installers,
-  updaters, crash reporters and similar clutter
-- A cover-art grid that resizes with the window, with live search
-- **Sorting:** name (A to Z or Z to A), recently played, most played, recently added. Games with no value (for
-  example never played) always sort last
-- **Tags that describe how a game works and where it came from**, in groups: Status, Source (which launcher),
-  Completion, Connection, Players, Structure, Genre and Features. Nexus works out Status and Source by itself, and
-  can suggest the rest from Steam (see Tags below)
-- **A filter panel:** pick one or several tags and choose whether a game needs **any** of them (OR) or **all**
-  of them (AND). Each tag shows how many games have it
-- Hide games you don't want to see (they reappear under the Hidden filter). There is no "delete a game": hiding
-  does the same job and is undone with one click
-
-**Each game**
-- Launch with one click on its cover. It starts the game's own executable in the game's own folder
-- Rename it (or press **Clean name**), choose which executable is the main one (or add one Nexus missed), edit its tags
-  (or press **Add suggested tags**), open its folder
-- **Moved a game to another drive?** Point Nexus at the new folder and it keeps the name, tags, play history and cover
-- Play history: when you last launched it and how many times (only launches made through Nexus are counted)
-
-**Library sources (Settings)**
-- Add scan folders with a folder picker or by dragging them in; each shows how many games it holds and warns if
-  it can't be found (for example an unplugged drive)
-- **Add app libraries** adds the game folders of your launchers in one click (Steam, Epic, GOG, Ubisoft Connect, EA app,
-  Rockstar, Riot), and picking Steam's own folder sends you to the right one
-- **Individually added games** is a second, separate list, for something that isn't (or shouldn't need to be) inside
-  a scan folder — say a launcher that shares a folder with unrelated programs. **Add a single game...** picks its
-  `.exe` and adds it immediately; each one gets its own row here, with its own remove button, and a scan-folder
-  change never touches it
-- Excluded folders, and ignore words shown as chips you can remove (or reset to the defaults)
-- **Save and rescan** tells you how many games were found, how many are new and which folders couldn't be read. If a
-  scan folder was removed, or a folder with games in it was excluded, it asks before removing those games too
-- **Why isn't my game found?** Pick a game's folder and Nexus explains which rule stops it
-
-**Apps (a tab in Settings)**
-- Lists every launcher Nexus knows (Steam, Epic, GOG Galaxy, Ubisoft Connect, EA app, Battle.net, Amazon Games,
-  itch, Riot Client, Rockstar, Playnite, Heroic, Minecraft Launcher) and you choose which to **link**, a bit like
-  the connections list in Discord (though nothing is actually connected to the launcher)
-- A launcher Nexus finds links in one click; one it can't find (or finds wrongly) you point at yourself with **Browse...**
-- **Add custom app...** (or drag a program or shortcut onto the tab) links anything else
-- Linked apps show their real icon and have a Launch button; unlinking only forgets the shortcut
-
-**Deals**
-- Free games and discounts from Steam, the Epic Games Store, GamerPower (giveaways on GOG, itch.io, IndieGala and
-  others) and CheapShark, with prices, the discount, the end date and the store it's on offer at (US dollars)
-- Sort (initial price, discounted price, when it expires, reduction in percent or dollars, name), filter (store,
-  free or paid, hide games you own), search, and page through the results
-- The percent and the new price are coloured by how good the deal is, and the end date turns yellow within a week
-  and red within a day
-- Games you already own are marked. Clicking a deal opens its web page in your browser
-- On by default and switchable off in Settings. It only goes online while the page is open; pictures are shown
-  live and never saved
-
-**Cover art**
-- Covers come from Steam automatically, with no key needed. A free [SteamGridDB](https://www.steamgriddb.com) key lets
-  you pick other covers yourself (search SteamGridDB in a popup) and fills in games Steam has no cover for. You can
-  also upload your own image
-- Covers are saved once in Nexus's own folder, so the library stays fast and works offline afterwards
-- Games without a cover get a generated colored placeholder
-
-**Names**
-- Turns folder-style names into readable ones (`Core_Keeper` becomes `Core Keeper`, `Titanfall2` becomes
-  `Titanfall 2`) using simple fixed rules, either for new games only or for everything (after a preview)
-
-**The app itself**
-- A Windows 11 style dark interface: rounded corners, the translucent Mica backdrop, Segoe UI Variable text
-- A sidebar that collapses to a slim icon strip. Its entries (Library, Deals) come from a single list of
-  pages in the code, and a fork can add a page of its own with one small class file (see "Adding your own page" below)
+Part 2 below covers all of this in the detail you'd actually need to use it.
 
 ## How it works
 
@@ -298,23 +233,18 @@ Nothing you change in Settings takes effect until you press Save, and **Cancel**
   helper, update, unins, setup, bench, anticheat, worker, agent, service, dotnet, handler, x86, 32, downloader,
   pbsvc, readme, prelaunch, cracktro`. They're chosen to be specific: a bare `crash` or `trial` would also skip
   real games (Crash Bandicoot, the Trials series), so those are narrowed or left out.
-- **Add app libraries** reads where your launchers keep their games and adds those folders to the list (staged until
-  you Save). It works whether or not the launcher is linked on the Apps tab. Steam, Epic Games, GOG, Ubisoft Connect,
-  EA app, Rockstar and Riot are supported; Battle.net, itch and Amazon Games keep their install list in private
-  databases, so add their folders by hand. Folders that are a whole drive, Program Files or similar are never added.
-  **Configure apps** next to it jumps to the Apps tab.
-- **Individually added games** is its own card, below Scan folders, listing every game you added this way. **Add a
-  single game...** picks one `.exe` and adds it right away — no Save needed, the same as changing a cover. The game
-  doesn't need to be inside a scan folder at all, and a scan-folder change never removes it (see below). Picking a
-  folder already in your library shows an error instead of adding it again. Each row has its own remove button:
-  unlike everything else in Settings, that deletes the game immediately too, since nothing would ever add it back.
+- **Add app libraries** finds where your launchers keep their games and adds those folders (staged until you Save).
+  Steam, Epic, GOG, Ubisoft Connect, EA app, Rockstar and Riot are supported; Battle.net, itch and Amazon Games
+  don't expose an install list, so add their folders by hand. **Configure apps** jumps to the Apps tab.
+- **Individually added games** is a second, separate list for a game that isn't (or shouldn't need to be) inside a
+  scan folder. **Add a single game...** picks its `.exe` and adds it right away, with its own remove button, and a
+  scan-folder change never touches it.
 - **Rescan now** saves and scans again without changing anything, for when you've installed something new.
-- **Why isn't my game found?** Press **Check a game folder...**, pick the game's folder, and Nexus explains what
-  stops it: not inside any scan folder, excluded, skipped by an ignore word, or already part of another game's
-  folder. It uses the settings on screen, including ones you haven't saved yet.
-- **Removing a scan folder** (or excluding one that already has games in it) can leave games behind whose folder
-  Nexus no longer looks at. Saving then asks first, and names them, before removing them from your library — a game
-  from **Individually added games** is never affected, since it was never found by scanning.
+- **Why isn't my game found?** Press **Check a game folder...** and pick its folder; Nexus explains what stops it
+  (not inside a scan folder, excluded, an ignore word, or already part of another game's folder).
+- **Removing a scan folder**, or excluding one that already has games in it, can leave games behind whose folder
+  Nexus no longer looks at. Saving then asks first, and names them, before removing them — games from
+  **Individually added games** are never affected, since scanning never found them in the first place.
 
 **Good to know about scanning**
 
@@ -345,9 +275,10 @@ never change what the Library page shows:
   so a game you've never launched is the most likely.
 - **Only pick games with** works like the Library's tag filter: choose tags (Solo, Co-op, VR, Never played...)
   and whether a game needs **any** or **all** of them. A line next to the button shows how many installed games match.
-- **Pick again** gives a different game whenever there is one; **Clear filters** resets the tags.
+- **Clear filters** resets the tags. To get a different game, just press **Pick something for me** again.
 
 Hidden and not-installed games are never picked.
+
 ## Your library
 
 - **Launch** a game by clicking its cover (a play button appears on hover). Click the name area to open the
@@ -400,6 +331,7 @@ straight away (there is nothing to Save), and Nexus never changes the programs t
   shortcut (`.lnk`, followed to the program it starts, keeping its arguments), and you can drop them onto the tab
   too. Custom apps can be renamed, pointed somewhere else and unlinked.
 - Unlinking only forgets the shortcut. A launcher that is installed simply goes back to **Found**.
+
 ## Deals
 
 The **Deals** page shows what's free or discounted right now:
@@ -411,12 +343,10 @@ The **Deals** page shows what's free or discounted right now:
 | GamerPower | Free giveaways on GOG, itch.io, IndieGala, Steam, Ubisoft and others |
 | CheapShark | Top discounts across Steam, GOG, Epic, Humble, Ubisoft and Fanatical |
 
-Each card shows the game's picture, its name, the normal price (struck through) and the new price, the store, and
-when the offer ends. **In your library** marks games you already have (matched by name; a sequel isn't treated as the
-same game). Click a card to open its page in your browser: Nexus only ever opens web addresses on those four sites,
-over https. The **store** on a card is where the game is actually on offer (Steam, GOG, IndieGala...), with a note
-like "via GamerPower" saying which list it came from. When the same game is on offer at several stores, one card
-shows the best offer and adds a line such as "Also on GOG".
+Each card shows the game's picture, name, old and new price, store, and when the offer ends. **In your library**
+marks games you already have (matched by name; a sequel isn't treated as the same game). Click a card to open its
+page in your browser — Nexus only ever opens the four sites above, over https. When a game is on offer at several
+stores, one card shows the best deal and notes the others (`Also on GOG`).
 
 **The colours**
 
@@ -428,26 +358,21 @@ shows the best offer and adds a line such as "Also on GOG".
 **Search, sort and filter** (the bar above the deals)
 
 - **Search** finds part of a game's name.
-- **Sort** by Best deal (the default: free first, then the biggest discount), Name, Initial price, Discounted price,
-  Expires, Reduction % or Reduction $. The arrow button flips the direction, and each sort starts in its natural
-  direction. Deals with nothing to sort on (for example no end date) always go last.
-- **All / Only free / Only paid** switches between everything, free games and paid deals.
-- **Filters** opens a side panel:
-  - **Stores**: pick one or more. With **All selected** (the default) a game must be on offer at *every* store you
-    picked, which is handy for comparing prices; with **Any selected** it can be at any of them. Each store shows how
-    many games it has.
-  - **Hide games I already own**.
-  - **Clear all** resets the panel.
-- **Pages:** deals are shown 12, 24 or 48 at a time (change it under the list), with page numbers and next/previous
-  buttons. Changing a search, sort or filter goes back to page 1.
+- **Sort** by best deal (the default), name, initial or discounted price, expiry, or reduction (% or $); the arrow
+  flips the direction. Deals with nothing to sort on (no end date, say) always go last.
+- **All / Only free / Only paid** narrows the list.
+- **Filters** opens a side panel: pick one or more **stores** (**All selected** means a game must be at every one
+  you picked, good for comparing prices; **Any selected** means at least one), **hide games I already own**, and
+  **clear all** to reset.
+- **Pages** of 12, 24 or 48 deals, with page numbers and next/previous.
 
-Nexus contacts these sites **only while the Deals page is open**, keeps the answer in memory for about 30 minutes
-(so switching pages is instant) and shows pictures without saving them anywhere. If you're offline you'll see a
-friendly message; if only some sites can't be reached, you get the rest plus a note saying which are missing.
-The same game at the same store listed by two sources appears once. Prices are in US dollars.
+Nexus contacts these sites **only while the Deals page is open**, and keeps the answer in memory for about 30
+minutes so switching pages is instant. Offline, or if a site can't be reached, you get a friendly message (or the
+deals from whichever sites still answered). Prices are US dollars only.
 
 Don't want it? **Settings > General > Show the Deals page** hides the page from the sidebar, and then nothing is
 ever fetched.
+
 ## Tags
 
 Tags are grouped so the filter panel stays readable:
@@ -607,6 +532,7 @@ library.
 - **Steam is used through its public store pages,** which have no official licence for this. They can change or stop
   working, and Nexus is not affiliated with or endorsed by Valve. Covers are publishers' artwork, kept only in your own
   data folder.
+
 ## Credits and notes
 
 - Covers come from Steam and from [SteamGridDB](https://www.steamgriddb.com) (uploaded by its community). Nexus is not
