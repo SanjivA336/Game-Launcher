@@ -72,8 +72,11 @@ pattern, so the code is written to be read.
   it can't be found (for example an unplugged drive)
 - **Add app libraries** adds the game folders of your launchers in one click (Steam, Epic, GOG, Ubisoft Connect, EA app,
   Rockstar, Riot), and picking Steam's own folder sends you to the right one
+- **Add a single game...** adds one game straight from its `.exe`, for something that isn't (or shouldn't need to be)
+  inside a scan folder. It's added immediately, and scan-folder changes never remove it
 - Excluded folders, and ignore words shown as chips you can remove (or reset to the defaults)
-- **Save and rescan** tells you how many games were found, how many are new and which folders couldn't be read
+- **Save and rescan** tells you how many games were found, how many are new and which folders couldn't be read. If a
+  scan folder was removed, or a folder with games in it was excluded, it asks before removing those games too
 - **Why isn't my game found?** Pick a game's folder and Nexus explains which rule stops it
 
 **Apps (a tab in Settings)**
@@ -297,10 +300,17 @@ Nothing you change in Settings takes effect until you press Save, and **Cancel**
   EA app, Rockstar and Riot are supported; Battle.net, itch and Amazon Games keep their install list in private
   databases, so add their folders by hand. Folders that are a whole drive, Program Files or similar are never added.
   **Configure apps** next to it jumps to the Apps tab.
+- **Add a single game...** picks one `.exe` and adds it as a game right away — no Save needed, the same as changing a
+  cover. Unlike everything else on this page, the game doesn't need to be inside a scan folder at all, and it's
+  never removed just because a scan folder changes (see below). Picking a folder already in your library shows an
+  error instead of adding it again.
 - **Rescan now** saves and scans again without changing anything, for when you've installed something new.
 - **Why isn't my game found?** Press **Check a game folder...**, pick the game's folder, and Nexus explains what
   stops it: not inside any scan folder, excluded, skipped by an ignore word, or already part of another game's
   folder. It uses the settings on screen, including ones you haven't saved yet.
+- **Removing a scan folder** (or excluding one that already has games in it) can leave games behind whose folder
+  Nexus no longer looks at. Saving then asks first, and names them, before removing them from your library — a game
+  added with **Add a single game...** is never affected, since it was never found by scanning.
 
 **Good to know about scanning**
 
