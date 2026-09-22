@@ -57,7 +57,7 @@ namespace Game_Launcher.ViewModels.Windows {
         private readonly List<string> _roots;
         private readonly List<string> _excludes;
         private readonly List<string> _ignores;
-        private readonly string _originalSnapshot;
+        private string _originalSnapshot;
         private readonly List<string> _knownGameFolders;
 
         public ObservableCollection<PathRowVM> Roots { get; } = new();
@@ -290,6 +290,18 @@ namespace Game_Launcher.ViewModels.Windows {
             target.SetExcludes(_excludes);
             target.SetIgnores(_ignores);
             return target;
+        }
+
+        /// <summary> Call once the staged changes here have actually been saved (and, if a rescan ran, it's finished), so this
+        /// page keeps working afterward instead of going stale: "unsaved changes" resets, and per-root game counts and the
+        /// individually added games list reflect whatever the save (and any rescan) just did. </summary>
+        public void MarkSaved() {
+            _originalSnapshot = Snapshot();
+            _knownGameFolders.Clear();
+            _knownGameFolders.AddRange(GameMappingManager.LoadMappings().Select(m => m.DirPathRaw));
+            RebuildRoots();
+            RebuildManualGames();
+            OnPropertyChanged(nameof(HasChanges));
         }
 
         #region Rebuilding the lists

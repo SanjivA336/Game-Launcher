@@ -535,8 +535,6 @@
                                 <Button Style="{StaticResource AccentButton}" Content="Remove and save" Command="{Binding ConfirmOrphanRemovalCommand}"
                                         MinWidth="100" Padding="16,6" Margin="8,0,0,0" AutomationProperties.Name="Remove and save"/>
                             </StackPanel>
-                            <Button Style="{StaticResource AccentButton}" Content="Done" Command="{Binding CancelCommand}" MinWidth="100" AutomationProperties.Name="Done"
-                                    Visibility="{Binding ScanFinished, Converter={StaticResource BoolToVisibilityConverter}}"/>
                         </StackPanel>
                     </StackPanel>
                 </Border>

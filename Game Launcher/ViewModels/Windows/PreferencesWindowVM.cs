@@ -246,20 +246,16 @@ namespace Game_Launcher.ViewModels.Windows {
         }
 
         private bool _scanFinished;
-        /// <summary> True once the rescan is done and its summary is showing (the window then offers a Done button). </summary>
+        /// <summary> True once a save (with or without a rescan) has something to report, so its summary line shows. Saving
+        /// again, whether or not anything changed, updates it, so the window never has to be closed to keep editing. </summary>
         public bool ScanFinished {
             get => _scanFinished;
-            private set {
-                _scanFinished = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CanEdit));
-                OnPropertyChanged(nameof(ShowSaveButtons));
-            }
+            private set { _scanFinished = value; OnPropertyChanged(); }
         }
 
-        /// <summary> The whole form is locked while a scan runs or its result is showing. </summary>
-        public bool CanEdit => !_isScanning && !_scanFinished;
-        public bool ShowSaveButtons => !_scanFinished && !_isConfirmingOrphanRemoval;
+        /// <summary> The form is locked only while a scan is actively running. </summary>
+        public bool CanEdit => !_isScanning;
+        public bool ShowSaveButtons => !_isConfirmingOrphanRemoval;
 
         private string _scanSummary = string.Empty;
         public string ScanSummary {
@@ -348,7 +344,10 @@ namespace Game_Launcher.ViewModels.Windows {
             }
 
             if (!rescan) {
-                _close();
+                Sources.MarkSaved();
+                ScanSummary = "Saved.";
+                ScanErrors.Clear();
+                ScanFinished = true;
                 return;
             }
 
@@ -374,6 +373,7 @@ namespace Game_Launcher.ViewModels.Windows {
             finally {
                 IsScanning = false;
                 ScanFinished = true;
+                Sources.MarkSaved();
             }
         }
         #endregion
