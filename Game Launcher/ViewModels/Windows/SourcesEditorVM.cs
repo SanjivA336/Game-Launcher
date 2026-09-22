@@ -21,6 +21,21 @@ namespace Game_Launcher.ViewModels.Windows {
         }
     }
 
+    /// <summary> One row in the "games added by hand" list: a game found by its .exe rather than by scanning a folder. </summary>
+    internal class ManualGameRowVM {
+        public string Name { get; }
+        public string Path { get; }
+        public bool IsMissing { get; }
+        public ICommand RemoveCommand { get; }
+
+        public ManualGameRowVM(string name, string path, bool isMissing, Action<ManualGameRowVM> remove) {
+            Name = name;
+            Path = path;
+            IsMissing = isMissing;
+            RemoveCommand = new RelayCommand(_ => remove(this));
+        }
+    }
+
     /// <summary> One removable ignore word, drawn as a chip. </summary>
     internal class KeywordChipVM {
         public string Word { get; }
@@ -48,6 +63,11 @@ namespace Game_Launcher.ViewModels.Windows {
         public ObservableCollection<PathRowVM> Roots { get; } = new();
         public ObservableCollection<PathRowVM> Excludes { get; } = new();
         public ObservableCollection<KeywordChipVM> Keywords { get; } = new();
+
+        /// <summary> Games added by their .exe (Add a single game...) rather than found by scanning. Unlike everything else on
+        /// this page, adding or removing one here happens immediately: there's no separate Save step. </summary>
+        public ObservableCollection<ManualGameRowVM> ManualGames { get; } = new();
+        public bool HasNoManualGames => ManualGames.Count == 0;
 
         private string _notice = string.Empty;
         /// <summary> A short message about the last thing the user did ("Added 2 Steam libraries", "Already in the list"...). </summary>
@@ -248,8 +268,9 @@ namespace Game_Launcher.ViewModels.Windows {
             }
 
             _knownGameFolders.Add(added!.DirPathRaw);
-            Notice = $"Added \"{added.Name}\". It doesn't need to be in a scan folder, and won't be removed if you change one.";
+            Notice = $"Added \"{added.Name}\" to the list below.";
             RebuildRoots(); // updates a root's game count, in case the exe happened to already be inside one
+            RebuildManualGames();
         }
 
         private void Diagnose(string folder) {
@@ -276,6 +297,28 @@ namespace Game_Launcher.ViewModels.Windows {
             RebuildRoots();
             RebuildExcludes();
             RebuildKeywords();
+            RebuildManualGames();
+        }
+
+        private void RebuildManualGames() {
+            ManualGames.Clear();
+            foreach (var game in GameMappingManager.LoadMappings().Where(m => m.AddedManually).OrderBy(m => m.Name, StringComparer.OrdinalIgnoreCase)) {
+                bool missing = !(game.DirPath?.Exists ?? false);
+                ManualGames.Add(new ManualGameRowVM(game.Name, game.DirPathRaw, missing, RemoveManualGame));
+            }
+            OnPropertyChanged(nameof(HasNoManualGames));
+        }
+
+        // Unlike a scan folder or exclude, removing this deletes the game outright: it was never something a rescan could
+        // rediscover on its own, so there's nothing to "un-remove" it. Its cover file is kept, like any other removed game.
+        private void RemoveManualGame(ManualGameRowVM row) {
+            if (GameMappingManager.DeleteMapping(row.Path, out string? error)) {
+                Notice = $"Removed \"{row.Name}\" from your library.";
+                RebuildManualGames();
+            }
+            else {
+                Notice = error ?? "Couldn't remove that game.";
+            }
         }
 
         private void RebuildRoots() {

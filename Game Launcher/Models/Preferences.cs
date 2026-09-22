@@ -9,10 +9,16 @@ namespace Game_Launcher.Models {
 
         private static readonly string PreferencesPath = AppPaths.PreferencesFile;
 
+        // "crash" and "trial" used to be here as bare words, but they also match real games: Crash Bandicoot / Crash Team
+        // Racing (their exe names start with "Crash...") and the Trials motocross series (exe names start with "Trials...").
+        // "crashreport" and "crashsender" still catch the common crash-handler exe names (CrashReportClient.exe from Unreal
+        // Engine, CrashSender*.exe from EurekaLog) without matching those games; "handler" already catches the rest
+        // (UnityCrashHandler*.exe, crashpad_handler.exe).
         private static readonly HashSet<string> DefaultIgnores = new HashSet<string> {
                 "redist",
                 "anti-cheat",
-                "crash",
+                "crashreport",
+                "crashsender",
                 "helper",
                 "update",
                 "unins",
@@ -26,7 +32,6 @@ namespace Game_Launcher.Models {
                 "handler",
                 "x86",
                 "32",
-                "trial",
                 "downloader",
                 "pbsvc",
                 "readme",
