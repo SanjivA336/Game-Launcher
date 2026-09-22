@@ -74,17 +74,19 @@
                 </ItemsControl>
             </Grid>
 
-            <!-- Pick something for me: full width, with its own filters on the right -->
+            <!-- Pick something for me: full width, with its own filters on the right. The cover is a fixed size (it's a picture,
+                 not a form), so the left column is Auto; the filter panel does the opposite: it grows with the window (a star
+                 column, with the Border's own MinWidth/MaxWidth as bounds), since a wider window gives its tag chips more room. -->
             <TextBlock Text="Not sure what to play?" Style="{StaticResource SectionTitleText}" Margin="0,10,0,12"/>
             <Border Style="{StaticResource Card}" Padding="0">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <!-- The pick -->
-                    <StackPanel Grid.Column="0" Margin="22" MinHeight="330">
+                    <StackPanel Grid.Column="0" Margin="22">
                         <StackPanel Orientation="Horizontal">
                             <Button Content="Pick something for me" Style="{StaticResource AccentButton}" Padding="18,9"
                                     Command="{Binding PickCommand}" AutomationProperties.Name="Pick something for me"/>
@@ -94,21 +96,20 @@
 
                         <TextBlock Text="{Binding PickMessage}" Margin="0,14,0,0" Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap"/>
 
-                        <!-- The pick: the same tile as in the library, so you can launch it (or open its options) right here -->
+                        <!-- The pick: the same tile as in the library, so you can launch it (or open its options) right here.
+                             Twice the size of a normal tile. There's no "Pick again" button any more: click the button above. -->
                         <StackPanel Orientation="Horizontal" Margin="0,18,0,0"
                                     Visibility="{Binding HasPicked, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <userControls:GameTile DataContext="{Binding Picked}" Width="160" Height="302"/>
+                            <userControls:GameTile DataContext="{Binding Picked}" Width="320" Height="542"/>
                             <StackPanel Margin="22,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Text="How about" Style="{StaticResource CaptionText}"/>
                                 <TextBlock Text="{Binding Picked.Game.Name}" FontSize="22" FontWeight="SemiBold" TextWrapping="Wrap" MaxWidth="320"/>
-                                <Button Content="Pick again" Style="{StaticResource SubtleButton}" Margin="0,10,0,0" HorizontalAlignment="Left"
-                                        Command="{Binding PickCommand}" AutomationProperties.Name="Pick again"/>
                             </StackPanel>
                         </StackPanel>
                     </StackPanel>
 
                     <!-- Picker settings (they never change the Library page's own filters) -->
-                    <Border Grid.Column="1" Width="300" Padding="18,20,14,20" BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="1,0,0,0">
+                    <Border Grid.Column="1" MinWidth="300" MaxWidth="640" Padding="18,20,14,20" BorderBrush="{StaticResource CardStrokeBrush}" BorderThickness="1,0,0,0">
                         <StackPanel>
                             <Grid>
                                 <TextBlock Text="Pick settings" Style="{StaticResource SectionTitleText}" VerticalAlignment="Center"/>
