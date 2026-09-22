@@ -112,53 +112,146 @@ namespace Game_Launcher.Services {
             foreach (var group in groups) {
                 if (!mappingDict.ContainsKey(group.Key)) {
                     var newMapping = new GameMapping(group.Key, group.ToList());
-                    newMapping.Name = GuessGameName(new DirectoryInfo(group.Key), roots);
-                    if (prefs.CleanNewGameNames) {
-                        newMapping.Name = NameCleaner.Clean(newMapping.Name);
-                    }
-
-                    // A cover left over from an earlier time this game was in the library is simply reused (custom ones stay custom).
-                    // Otherwise it's a new game, so it gets a cover lookup once.
-                    if (CoverStore.FindExisting(group.Key) is { } existingCover) {
-                        newMapping.CoverPath = existingCover.FileName;
-                        newMapping.CoverIsCustom = existingCover.IsCustom;
-                    }
-                    else {
-                        newMapping.CoverLookupPending = true;
-                    }
-
+                    PrepareNewMapping(newMapping, prefs, roots);
                     mappings.Add(newMapping);
                     mappingDict[group.Key] = newMapping;
                     newGames++;
                 }
             }
 
-            // Update the IsInstalled property for each mapping
+            // Update the IsInstalled property for each mapping (scanned or added by hand: this runs every time, for all of them)
             foreach (var mapping in mappings) {
-                // (a game that has disappeared keeps the source it had, since its launcher's record is gone too)
-                string source = mapping.DirPathRaw is null ? "Other" : LauncherLibraries.SourceOf(mapping.DirPathRaw, installs);
-                if (mapping.Source is null || source != "Other") {
-                    mapping.Source = source;
-                }
-
-                if(mapping.DirPath != null && mapping.DirPath.Exists && mapping.Executables.Count > 0) {
-                    mapping.AddTag("Installed");
-                }
-                else {
-                    mapping.RemoveTag("Installed");
-                }
-
-                // Games saved before "date added" existed (and brand-new ones) get it filled in here.
-                // The folder's creation date is roughly when the game was installed; reading it changes nothing on disk.
-                if (mapping.DateAdded is null) {
-                    mapping.DateAdded = mapping.DirPath is { Exists: true } dir ? dir.CreationTime : DateTime.Now;
-                }
+                ApplyInstallState(mapping, installs);
             }
 
             // Save the updated mappings
             GameMappingManager.SaveMappings(mappings);
             Debug.WriteLine($"Scanned {mappings.Count} games from {executables.Count} executables found in {mappingDict.Count} directories.");
             return new ScanResult(mappings.Count, newGames, errors.ToList());
+        }
+
+        /// <summary> Names and covers a brand-new game the same way whether it was found by scanning or added by hand. </summary>
+        private static void PrepareNewMapping(GameMapping mapping, Preferences prefs, IEnumerable<DirectoryInfo> roots) {
+            mapping.Name = GuessGameName(mapping.DirPath ?? new DirectoryInfo(mapping.DirPathRaw), roots);
+            if (prefs.CleanNewGameNames) {
+                mapping.Name = NameCleaner.Clean(mapping.Name);
+            }
+
+            // A cover left over from an earlier time this game was in the library is simply reused (custom ones stay custom).
+            // Otherwise it's a new game, so it gets a cover lookup once.
+            if (CoverStore.FindExisting(mapping.DirPathRaw) is { } existingCover) {
+                mapping.CoverPath = existingCover.FileName;
+                mapping.CoverIsCustom = existingCover.IsCustom;
+            }
+            else {
+                mapping.CoverLookupPending = true;
+            }
+        }
+
+        /// <summary> Sets which launcher a game came from, whether it's installed, and when it was added. Runs for every game on
+        /// every scan (scanned or added by hand), so these stay current even for a game the scan itself didn't touch. </summary>
+        private static void ApplyInstallState(GameMapping mapping, IReadOnlyList<LauncherInstall> installs) {
+            // (a game that has disappeared keeps the source it had, since its launcher's record is gone too)
+            string source = mapping.DirPathRaw is null ? "Other" : LauncherLibraries.SourceOf(mapping.DirPathRaw, installs);
+            if (mapping.Source is null || source != "Other") {
+                mapping.Source = source;
+            }
+
+            if (mapping.DirPath != null && mapping.DirPath.Exists && mapping.Executables.Count > 0) {
+                mapping.AddTag("Installed");
+            }
+            else {
+                mapping.RemoveTag("Installed");
+            }
+
+            // Games saved before "date added" existed (and brand-new ones) get it filled in here.
+            // The folder's creation date is roughly when the game was installed; reading it changes nothing on disk.
+            if (mapping.DateAdded is null) {
+                mapping.DateAdded = mapping.DirPath is { Exists: true } dir ? dir.CreationTime : DateTime.Now;
+            }
+        }
+
+        /// <summary>
+        /// Adds one game directly from its executable, instead of finding it by scanning a folder. For a game that isn't (or
+        /// shouldn't be) inside any scan folder — a portable exe on the Desktop, say, or one you'd rather not add a whole library for.
+        /// The exe's own folder becomes the game's folder, exactly as if it had been found there by a scan.
+        /// </summary>
+        /// <param name="exePath"> The .exe the user picked.</param>
+        /// <param name="prefs"> Used for the same name-cleaning setting a scan would use.</param>
+        public static bool AddSingleGame(string exePath, Preferences prefs, out GameMapping? added, out string? error) {
+            added = null;
+
+            if (string.IsNullOrWhiteSpace(exePath) || !exePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) || !File.Exists(exePath)) {
+                error = "That isn't an executable file.";
+                return false;
+            }
+
+            string? folder = Path.GetDirectoryName(Path.GetFullPath(exePath));
+            if (string.IsNullOrEmpty(folder)) {
+                error = "Nexus couldn't work out this file's folder.";
+                return false;
+            }
+
+            using var _ = Locked();
+            var mappings = LoadMappings();
+            if (mappings.Any(m => folder.Equals(m.DirPathRaw, StringComparison.OrdinalIgnoreCase))) {
+                error = "That folder is already in your library. Open the game's options to add another executable to it.";
+                return false;
+            }
+
+            var mapping = new GameMapping(folder, [new FileInfo(exePath)]) { AddedManually = true };
+            PrepareNewMapping(mapping, prefs, prefs.Roots);
+            ApplyInstallState(mapping, LauncherLibraries.InstallsOnThisPc());
+
+            mappings.Add(mapping);
+            SaveMappings(mappings);
+            error = null;
+            added = mapping;
+            return true;
+        }
+
+        /// <summary>
+        /// Games that no longer belong to any current scan folder, or now sit inside an excluded one — what removing a scan folder
+        /// (or excluding a folder that already had games in it) leaves behind. Only checks the folder PATHS against the current
+        /// settings, so a drive that's simply unplugged doesn't count: its scan folder is still configured, so its games are kept
+        /// (as "Not installed") the same as always. A game added by hand (<see cref="AddSingleGame"/>) is never included: it was
+        /// never found by scanning, so no scan-folder change can orphan it.
+        ///
+        /// An exclude only counts against a game when it's the closest of the two: a root nested INSIDE an excluded folder (the
+        /// "exclude the Steam folder itself, but add its steamapps\common as its own root" pattern) still covers its games,
+        /// the same as it does when actually scanning.
+        /// </summary>
+        public static List<GameMapping> GamesOutOfScope(Preferences prefs) => GamesOutOfScope(LoadMappings(), prefs);
+
+        private static List<GameMapping> GamesOutOfScope(List<GameMapping> mappings, Preferences prefs) {
+            return mappings
+                .Where(m => !m.AddedManually && !string.IsNullOrEmpty(m.DirPathRaw))
+                .Where(m => IsOutOfScope(m.DirPathRaw, prefs))
+                .ToList();
+        }
+
+        private static bool IsOutOfScope(string dirPath, Preferences prefs) {
+            int bestRoot = prefs._roots.Where(root => SourceRules.IsInside(dirPath, root)).Select(root => root.Length).DefaultIfEmpty(-1).Max();
+            if (bestRoot < 0) {
+                return true; // no scan folder covers it at all
+            }
+            int bestExclude = prefs._excludes.Where(exclude => SourceRules.IsInside(dirPath, exclude)).Select(exclude => exclude.Length).DefaultIfEmpty(-1).Max();
+            return bestExclude >= bestRoot; // the closer (more specific) of the two decides; a tie (the very same folder) goes to the exclude
+        }
+
+        /// <summary> Removes every game <see cref="GamesOutOfScope"/> finds, and saves. As with any removed game, its cover file
+        /// is left in place, so it's picked straight back up if the game is ever added again. </summary>
+        public static List<GameMapping> RemoveGamesOutOfScope(Preferences prefs) {
+            using var _ = Locked();
+            var mappings = LoadMappings();
+            var orphaned = GamesOutOfScope(mappings, prefs);
+            if (orphaned.Count > 0) {
+                foreach (var mapping in orphaned) {
+                    mappings.Remove(mapping);
+                }
+                SaveMappings(mappings);
+            }
+            return orphaned;
         }
 
         /// <summary> What a scan found. </summary>

@@ -90,16 +90,20 @@ namespace Game_Launcher.ViewModels.Windows {
         public ICommand AddKeywordCommand { get; }
         public ICommand ResetKeywordsCommand { get; }
         public ICommand AddAppLibrariesCommand { get; }
+        public ICommand AddSingleGameCommand { get; }
         public ICommand ConfigureAppsCommand { get; }
         public ICommand WhyNotFoundCommand { get; }
 
         private readonly Func<IReadOnlyList<LauncherLibrary>> _findLibraries;
+        private readonly Func<string, string?> _pickExecutable;
 
         /// <param name="findLibraries"> Finds the folders your launchers keep games in. Replaceable in tests.</param>
         /// <param name="openApps"> Takes the user to the Apps tab (the "Configure apps" link).</param>
-        public SourcesEditorVM(Preferences prefs, Func<string, string?>? pickFolder = null, Func<IReadOnlyList<LauncherLibrary>>? findLibraries = null, Action? openApps = null) {
+        /// <param name="pickExecutable"> Shows a file picker filtered to .exe, for "Add a single game...". Replaceable in tests.</param>
+        public SourcesEditorVM(Preferences prefs, Func<string, string?>? pickFolder = null, Func<IReadOnlyList<LauncherLibrary>>? findLibraries = null, Action? openApps = null, Func<string, string?>? pickExecutable = null) {
             _pickFolder = pickFolder ?? FolderPicker.Pick;
             _findLibraries = findLibraries ?? LauncherLibraries.FindOnThisPc;
+            _pickExecutable = pickExecutable ?? ExecutablePicker.Pick;
             _roots = prefs._roots.ToList();
             _excludes = prefs._excludes.ToList();
             _ignores = prefs.Ignores.OrderBy(k => k, StringComparer.OrdinalIgnoreCase).ToList();
@@ -123,6 +127,7 @@ namespace Game_Launcher.ViewModels.Windows {
             AddKeywordCommand = new RelayCommand(_ => AddKeyword());
             ResetKeywordsCommand = new RelayCommand(_ => ResetKeywords());
             AddAppLibrariesCommand = new RelayCommand(_ => AddAppLibraries());
+            AddSingleGameCommand = new RelayCommand(_ => AddSingleGame());
             ConfigureAppsCommand = new RelayCommand(_ => openApps?.Invoke());
             WhyNotFoundCommand = new RelayCommand(_ => {
                 string? picked = _pickFolder("Choose the folder of the game that isn't showing up");
@@ -227,6 +232,24 @@ namespace Game_Launcher.ViewModels.Windows {
             Notice = (added.Count == 1 ? "Added 1 folder from your launchers:" : $"Added {added.Count} folders from your launchers:")
                      + string.Concat(added.Select(a => $"{Environment.NewLine}{a.Launcher}: {a.Path}"));
             RebuildRoots();
+        }
+
+        // Adds one game straight from its .exe, for something that isn't inside (or shouldn't need) a whole scan folder. Unlike
+        // everything else here, this is saved immediately: there is no separate "Save" step, the same as picking a cover.
+        private void AddSingleGame() {
+            string? picked = _pickExecutable("Choose the game's .exe");
+            if (picked is null) {
+                return;
+            }
+
+            if (!GameMappingManager.AddSingleGame(picked, Preferences.Load(), out var added, out string? error)) {
+                Notice = error ?? "Couldn't add that game.";
+                return;
+            }
+
+            _knownGameFolders.Add(added!.DirPathRaw);
+            Notice = $"Added \"{added.Name}\". It doesn't need to be in a scan folder, and won't be removed if you change one.";
+            RebuildRoots(); // updates a root's game count, in case the exe happened to already be inside one
         }
 
         private void Diagnose(string folder) {

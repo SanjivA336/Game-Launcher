@@ -214,6 +214,10 @@ namespace Game_Launcher.Models {
         /// <summary> The launcher the game came from ("Steam", "Epic Games", ..., "Other"). Decided when the library is scanned. </summary>
         public string? Source { get; set; }
 
+        /// <summary> True for a game added directly by its executable (Settings > Library sources > Add a single game...), rather
+        /// than found by scanning a folder. It is never removed automatically when a scan folder or excluded folder changes. </summary>
+        public bool AddedManually { get; set; }
+
         /// <summary> Where the current automatic cover came from ("Steam" or "SteamGridDB"); null for your own image or no cover. </summary>
         public string? CoverSource { get; set; }
         #endregion

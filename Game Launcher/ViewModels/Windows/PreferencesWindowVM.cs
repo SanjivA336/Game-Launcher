@@ -259,7 +259,7 @@ namespace Game_Launcher.ViewModels.Windows {
 
         /// <summary> The whole form is locked while a scan runs or its result is showing. </summary>
         public bool CanEdit => !_isScanning && !_scanFinished;
-        public bool ShowSaveButtons => !_scanFinished;
+        public bool ShowSaveButtons => !_scanFinished && !_isConfirmingOrphanRemoval;
 
         private string _scanSummary = string.Empty;
         public string ScanSummary {
@@ -273,6 +273,41 @@ namespace Game_Launcher.ViewModels.Windows {
         /// <summary> The Save button says "Save and rescan" when the scan folders or ignore words changed. </summary>
         public string SaveLabel => Sources.HasChanges ? "Save and rescan" : "Save";
 
+        #region Removing games a scan folder no longer covers
+        // Removing a scan folder (or excluding a folder that already has games in it) can leave games in the library whose
+        // folder Nexus no longer looks at. That's a step the user asked for explicitly, but it throws away tags and play
+        // history (their cover file is kept, so it comes straight back if the game is ever added again), so Save asks first.
+        private List<GameMapping> _pendingOrphans = new();
+        private bool _orphanRemovalConfirmed;
+
+        public ObservableCollection<string> OrphanExamples { get; } = new();
+
+        private bool _isConfirmingOrphanRemoval;
+        public bool IsConfirmingOrphanRemoval {
+            get => _isConfirmingOrphanRemoval;
+            private set {
+                _isConfirmingOrphanRemoval = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShowSaveButtons));
+            }
+        }
+
+        private string _orphanQuestion = string.Empty;
+        public string OrphanQuestion {
+            get => _orphanQuestion;
+            private set { _orphanQuestion = value; OnPropertyChanged(); }
+        }
+
+        public ICommand ConfirmOrphanRemovalCommand { get; }
+        public ICommand CancelOrphanRemovalCommand { get; }
+
+        private void CancelOrphanRemoval() {
+            IsConfirmingOrphanRemoval = false;
+            OrphanExamples.Clear();
+            _pendingOrphans.Clear();
+        }
+        #endregion
+
         private void ApplyToPreferences() {
             Preferences.SteamGridDbApiKey = (SteamGridDbApiKey ?? string.Empty).Trim();
             Preferences.CleanNewGameNames = CleanNewGameNames;
@@ -282,8 +317,35 @@ namespace Game_Launcher.ViewModels.Windows {
         }
 
         private async Task SaveAsync(bool forceRescan) {
+            if (!_orphanRemovalConfirmed) {
+                _pendingOrphans = GameMappingManager.GamesOutOfScope(Sources.BuildPreferences(new Preferences()));
+                if (_pendingOrphans.Count > 0) {
+                    OrphanExamples.Clear();
+                    foreach (var game in _pendingOrphans.Take(8)) {
+                        OrphanExamples.Add(game.Name);
+                    }
+                    if (_pendingOrphans.Count > 8) {
+                        OrphanExamples.Add($"…and {_pendingOrphans.Count - 8} more");
+                    }
+                    OrphanQuestion = _pendingOrphans.Count == 1
+                        ? "1 game's folder is no longer covered by a scan folder. Remove it from your library too?"
+                        : $"{_pendingOrphans.Count} games' folders are no longer covered by a scan folder. Remove them from your library too?";
+                    IsConfirmingOrphanRemoval = true;
+                    return;
+                }
+            }
+            _orphanRemovalConfirmed = false;
+            IsConfirmingOrphanRemoval = false;
+
             bool rescan = forceRescan || Sources.HasChanges;
             ApplyToPreferences();
+
+            if (_pendingOrphans.Count > 0) {
+                GameMappingManager.RemoveGamesOutOfScope(Preferences);
+                _pendingOrphans.Clear();
+                OrphanExamples.Clear();
+                rescan = true; // reflect the removal in the summary even if nothing else changed
+            }
 
             if (!rescan) {
                 _close();
@@ -317,7 +379,7 @@ namespace Game_Launcher.ViewModels.Windows {
         #endregion
 
         /// <param name="testKey"> Tries a SteamGridDB key. Replaceable in tests.</param>
-        public PreferencesWindowVM(Action minimize, Action maximize, Action close, Func<string, string?>? pickFolder = null, Func<IReadOnlyList<LauncherLibrary>>? findLibraries = null, Func<string, CancellationToken, Task<CoverOutcome>>? testKey = null) {
+        public PreferencesWindowVM(Action minimize, Action maximize, Action close, Func<string, string?>? pickFolder = null, Func<IReadOnlyList<LauncherLibrary>>? findLibraries = null, Func<string, CancellationToken, Task<CoverOutcome>>? testKey = null, Func<string, string?>? pickExecutable = null) {
             _testKey = testKey ?? CoverService.TestKeyAsync;
             OpenKeyPageCommand = new RelayCommand(_ => OpenKeyPage());
             TestKeyCommand = new RelayCommand(async _ => await TestKeyAsync());
@@ -326,7 +388,7 @@ namespace Game_Launcher.ViewModels.Windows {
             _cleanNewGameNames = Preferences.CleanNewGameNames;
             _dealsPageEnabled = Preferences.DealsPageEnabled;
             _close = close;
-            Sources = new SourcesEditorVM(Preferences, pickFolder, findLibraries, openApps: () => IsAppsTab = true);
+            Sources = new SourcesEditorVM(Preferences, pickFolder, findLibraries, openApps: () => IsAppsTab = true, pickExecutable: pickExecutable);
             Sources.PropertyChanged += (_, e) => {
                 if (e.PropertyName == nameof(SourcesEditorVM.HasChanges)) {
                     OnPropertyChanged(nameof(SaveLabel));
@@ -346,6 +408,8 @@ namespace Game_Launcher.ViewModels.Windows {
             SaveCommand = new RelayCommand(async _ => await SaveAsync(forceRescan: false));
             RescanCommand = new RelayCommand(async _ => await SaveAsync(forceRescan: true));
             CancelCommand = new RelayCommand(_ => _close());
+            ConfirmOrphanRemovalCommand = new RelayCommand(async _ => { _orphanRemovalConfirmed = true; await SaveAsync(forceRescan: false); });
+            CancelOrphanRemovalCommand = new RelayCommand(_ => CancelOrphanRemoval());
         }
     }
 }
