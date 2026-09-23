@@ -12,16 +12,16 @@ Open **Settings** (bottom of the sidebar); it opens on **Library sources**. Noth
 until you press **Save**, and **Cancel** throws the changes away.
 
 1. Press **Add app libraries** to add the game folders of your launchers (Steam, Epic, GOG and so on), and/or **Add
-   folder...** (or drag folders in from Explorer) for everything else: the folders your games live in, such as
-   `D:\Games`. Each game should be somewhere below one of them.
+   folder...** (or drag folders in from Explorer) for everywhere else your games live. Each game should be
+   somewhere below one of the folders you add.
 2. Press **Save and rescan**. Nexus tells you how many games it found and how many are new.
 
 - **Excluded folders** are skipped completely, together with everything inside them. A scan folder that sits
   *inside* an excluded folder is still scanned.
-- **Ignore words** mark a file or folder as "not a game" when its name contains the word. Remove any chip you don't
-  want, add your own, or **Reset to defaults**. The defaults are: `redist, anti-cheat, crashreport, crashsender,
-  helper, update, unins, setup, bench, anticheat, worker, agent, service, dotnet, handler, x86, 32, downloader,
-  pbsvc, readme, prelaunch, cracktro`. They're kept specific on purpose, so they don't end up matching a real game's name.
+- **Ignore words** mark a file or folder as "not a game" when its name contains the word. Nexus ships with a set of
+  defaults covering common installer, updater, redistributable, anti-cheat and crash-reporter clutter, chosen to be
+  specific so they don't end up matching a real game's name. Remove any chip you don't want, add your own, or
+  **Reset to defaults**.
 - **Add app libraries** finds where your launchers keep their games and adds those folders (staged until you Save).
   Steam, Epic, GOG, Ubisoft Connect, EA app, Rockstar and Riot are supported; Battle.net, itch and Amazon Games
   don't expose an install list, so add their folders by hand. **Configure apps** jumps to the Apps tab.
@@ -37,11 +37,11 @@ until you press **Save**, and **Cancel** throws the changes away.
 
 **Good to know about scanning**
 
-- A game's name comes from the folder directly under its scan folder, so `D:\Games\Foo\bin\Foo.exe` is called
-  `Foo`. Steam's layout (`...\steamapps\common\Foo`) is recognised whichever folder you used.
-- A launcher's own folder usually has an `.exe` of its own (`steam.exe`), and Nexus stops looking deeper once a
-  folder has one. So if you add Steam's own folder (or a Steam library folder) Nexus swaps in its
-  `steamapps\common` folder for you and tells you it did.
+- A game's name comes from the folder directly under its scan folder, not a deeper folder that happens to hold the
+  `.exe`. Steam's layout is recognised whichever folder you used.
+- A launcher's own folder usually has an `.exe` of its own, and Nexus stops looking deeper once a folder has one.
+  So if you add Steam's own folder (or a Steam library folder) Nexus swaps in its `steamapps\common` folder for you
+  and tells you it did.
 - Nexus picks the first `.exe` it finds as the main one. If a game starts the wrong thing, open the game and
   choose a different executable.
 - Folders that are on a drive that isn't connected are shown with a warning; the games in them stay in your
@@ -214,7 +214,7 @@ in your own `preferences.json`.
 
 ## Cleaning up game names
 
-Folder names are often ugly (`Core_Keeper`, `BelowZero`, `Titanfall2`). In **Settings > General > Game names**:
+Folder names are often ugly. In **Settings > General > Game names**:
 
 - **Clean up names of newly found games** (on by default) cleans a name when a game is first found.
 - **Clean up all existing names...** shows you what would change and asks first, because it overwrites names you
@@ -222,8 +222,8 @@ Folder names are often ugly (`Core_Keeper`, `BelowZero`, `Titanfall2`). In **Set
 - In a single game's options, **Clean name** fills the Name box with the cleaned name, and you keep it with **Save**.
 
 The rules are fixed: `-`, `_` and `.` become spaces; a space goes before a capital letter that follows a lowercase
-letter, and before a number that follows a letter; a trailing website tag (`-SomeSite.com`) is removed. Names that
-use capitals on purpose (`DiRT`, `iRacing`) get split, so rename those by hand.
+letter, and before a number that follows a letter; a trailing website tag is removed. Names that use capitals on
+purpose get split too, so those need renaming by hand.
 
 ## Where your data lives
 
