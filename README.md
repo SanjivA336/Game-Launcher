@@ -9,6 +9,8 @@ it opens in about a second and works with no internet connection.
 > **Version 1.0.** It is usable day to day, but it is a young project with rough edges (see
 > [Limitations](#limitations)). Windows only.
 
+![The library page](docs/screenshots/library.png)
+
 **Jump to:** [What is Nexus](#what-is-nexus) | [Full guide](docs/GUIDE.md) | [Contributing](CONTRIBUTING.md)
 
 ---
@@ -59,6 +61,8 @@ pattern, so the code is written to be read.
 - **Covers** — fetched automatically from Steam; a free SteamGridDB key adds a picker and fills in the rest
 - **Names** — cleans up folder-style names into readable ones automatically
 - **The app itself** — a Windows 11 style dark interface; a fork can add its own page with one class file
+
+![The home page](docs/screenshots/home.png)
 
 The [full guide](docs/GUIDE.md) covers all of this in the detail you'd actually need to use it.
 
