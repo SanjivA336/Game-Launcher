@@ -42,7 +42,7 @@
         </DataTemplate>
 
         <DataTemplate DataType="{x:Type pages:SeeAllCardVM}">
-            <Button Style="{StaticResource SeeAllButton}" Width="160" Height="302" Margin="0,0,20,0"
+            <Button Style="{StaticResource SeeAllButton}" Width="{Binding Width}" Height="302" Margin="0,0,20,0"
                     Command="{Binding Command}" AutomationProperties.Name="See all your games">
                 <StackPanel HorizontalAlignment="Center">
                     <Border Width="52" Height="52" CornerRadius="26" Background="{StaticResource AccentSubtleBrush}" HorizontalAlignment="Center">

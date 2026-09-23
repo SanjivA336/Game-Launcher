@@ -6,14 +6,17 @@ using System.Windows.Input;
 
 namespace Game_Launcher.ViewModels.Pages {
 
-    /// <summary> The last card of "Continue playing": a button that goes to the whole library. </summary>
+    /// <summary> The last card of "Continue playing": a button that goes to the whole library. Unlike a game tile, its
+    /// width can shrink (down to half a tile) so an extra game fits instead of leaving the leftover space empty. </summary>
     internal class SeeAllCardVM {
         public string Title => "See all your games";
         public string Subtitle { get; }
+        public double Width { get; }
         public ICommand Command { get; }
 
-        public SeeAllCardVM(int gameCount, Action open) {
+        public SeeAllCardVM(int gameCount, double width, Action open) {
             Subtitle = gameCount == 1 ? "1 game" : $"{gameCount} games";
+            Width = width;
             Command = new RelayCommand(_ => open());
         }
     }
@@ -26,30 +29,58 @@ namespace Game_Launcher.ViewModels.Pages {
         private List<GameMapping> _allGames = new();
 
         #region Continue playing
+        // Each card is CardWidth wide with a CardGap after it, except the last one ("See all your games"), which is
+        // allowed to shrink down to half its normal width instead of always claiming a full card's worth of space.
+        private const double CardWidth = 160;
+        private const double CardGap = 20;
+        private const double MinSeeAllWidth = CardWidth / 2;
+
         private List<GameMapping> _recent = new();
-        private int _columns = 5;
+        private double _availableWidth = 5 * (CardWidth + CardGap) - CardGap; // a sane default before the page reports its real width
+        private int _gamesShown = -1;
+        private double _seeAllWidth = CardWidth;
 
         /// <summary> The recent games that fit on one row, followed by the "See all" card. </summary>
         public ObservableCollection<object> Items { get; } = new();
 
-        /// <summary>
-        /// How many cards fit across the page. One of them is always the "See all your games" card, so one fewer recent game is shown.
-        /// Called by the page whenever its width changes.
-        /// </summary>
-        public void SetColumns(int columns) {
-            columns = Math.Max(columns, 1);
-            if (columns != _columns) {
-                _columns = columns;
-                RebuildItems();
+        /// <summary> Called by the page whenever the row's width changes, so it can show as many cards as actually fit. </summary>
+        public void SetAvailableWidth(double width) {
+            width = Math.Max(width, 0);
+            // Skip the (otherwise pointless) rebuild while the width is still settling mid-drag and hasn't moved enough
+            // to matter; RebuildItems has its own guard too, for when the width changes but nothing visible would.
+            if (Math.Abs(width - _availableWidth) < 0.5) {
+                return;
             }
+            _availableWidth = width;
+            RebuildItems();
         }
 
         private void RebuildItems() {
+            // How many full-size cards fit if the last one is a full-size "See all" card too (the simple case).
+            int fullSlots = Math.Max((int)((_availableWidth + CardGap) / (CardWidth + CardGap)), 1);
+            int gamesShown = Math.Max(fullSlots - 1, 0);
+            double seeAllWidth = CardWidth;
+
+            // Is there room for ONE more game if "See all" shrinks (down to half width) to make space for it?
+            double leftoverForOneMore = _availableWidth - fullSlots * (CardWidth + CardGap);
+            if (leftoverForOneMore >= MinSeeAllWidth) {
+                gamesShown = fullSlots;
+                seeAllWidth = Math.Min(leftoverForOneMore, CardWidth);
+            }
+
+            // Skip rebuilding the collection itself (which would flash/reorder it) when nothing visible would change from
+            // the last time it was actually built. Forced (via _gamesShown = -1) whenever the underlying games list changes.
+            if (gamesShown == _gamesShown && Math.Abs(seeAllWidth - _seeAllWidth) < 0.5) {
+                return;
+            }
+            _gamesShown = gamesShown;
+            _seeAllWidth = seeAllWidth;
+
             Items.Clear();
-            foreach (var game in _recent.Take(Math.Max(_columns - 1, 0))) {
+            foreach (var game in _recent.Take(_gamesShown)) {
                 Items.Add(new GameTileVM(game));
             }
-            Items.Add(new SeeAllCardVM(_allGames.Count(g => !g.HasTag(TagCatalog.Hidden)), _showLibrary));
+            Items.Add(new SeeAllCardVM(_allGames.Count(g => !g.HasTag(TagCatalog.Hidden)), _seeAllWidth, _showLibrary));
         }
 
         /// <summary> Installed, visible games that have been launched at least once, most recent first. </summary>
@@ -203,6 +234,7 @@ namespace Game_Launcher.ViewModels.Pages {
             var visible = _allGames.Where(g => !g.HasTag(TagCatalog.Hidden)).ToList();
 
             _recent = RecentGames(visible, 30).ToList();
+            _gamesShown = -1; // the list of games may have changed even if the width (and so the counts) hasn't, so force a rebuild
             RebuildItems();
 
             int installed = visible.Count(g => g.HasTag(TagCatalog.Installed));
